@@ -73,7 +73,7 @@ window.addEventListener('DOMContentLoaded', async function () {
     } else localStorage.clear();
 
     function renderActualSite() {
-        document.title = "TetteDev - CV";
+        document.title = "TetteDev";
 
         const body = document.createElement('fa-body');
 
@@ -92,8 +92,16 @@ window.addEventListener('DOMContentLoaded', async function () {
         h1.textContent = 'Hello there!';
         heroInner.appendChild(h1);
 
+        
+
         const heroP = document.createElement('fa-p');
-        heroP.textContent = 'Turns out there was something here after all :)';
+        
+        if (!localStorage.getItem(LS_KEY()) === LS_VAL()) {
+            heroP.textContent = 'Turns out there was something here after all :)';
+        }
+        else {
+            heroP.textContent = 'Welcome to my personal website! Feel free to look around and check out some of my projects below.';
+        }
         heroInner.appendChild(heroP);
 
         if (location.hash === MAGIC_HASH()) {
@@ -112,44 +120,50 @@ window.addEventListener('DOMContentLoaded', async function () {
         heroCta.setAttribute('variant', 'primary');
         heroCta.setAttribute('size', 'lg');
         heroCta.textContent = 'Visit my GitHub';
-        heroCta.addEventListener('click', () => {
-            window.open("https://github.com/TetteDev", "_blank");
-        });
+        heroCta.addEventListener('click', () => { window.open("https://github.com/TetteDev", "_blank"); });
         heroInner.appendChild(heroCta);
         hero.appendChild(heroInner);
         main.appendChild(hero);
 
         const projects = document.createElement('fa-section');
         projects.id = 'projects';
-        projects.setAttribute('title', 'Projects');
+        projects.setAttribute('title', 'Recently updated projects');
         projects.setAttribute('accent', 'green');
 
         const grid = document.createElement('div');
         grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;';
 
-        const projectData = [
+        const langToShort = (full) => {
+            switch (full) {
+                case "JavaScript": return "JS";
+                case "TypeScript": return "TS";
+                default: return full;
+            }
+        };
+
+        const highlightedProjectData = [
             {
                 title: 'Frutiger Aero UI',
                 accent: 'green',
-                body: 'A custom Web Components design system inspired by the glass and nature aesthetics of early 2010s Windows. This website is using these components!',
-                badge: 'Web',
+                body: 'Custom Web Components for the web written in vanilla JavaScript, inspired by the design of the Frutiger Aero typeface',
+                badge: 'JS',
                 badgeVariant: 'success',
                 source: '', // url
             },
             {
-                title: 'Placeholder',
-                accent: 'blue',
-                body: 'Placeholder project description',
-                badge: 'Other',
+                title: 'ImmediateGUI',
+                accent: 'green',
+                body: 'An immediate mode style GUI library for use in Userscripts',
+                badge: 'JS',
                 badgeVariant: 'success',
-                source: '',
+                source: 'https://greasyfork.org/en/scripts/535798-immediategui',
             },
         ];
 
-        projectData.forEach(({ title, accent, body: bodyText, badge, badgeVariant, source }) => {
+        highlightedProjectData.forEach(({ title, accent, body: bodyText, badge, badgeVariant, source }) => {
             const card = document.createElement('fa-card');
             card.setAttribute('hover', '');
-            card.setAttribute('accent', accent);
+            card.setAttribute('accent', 'amber');
 
             const cardHeader = document.createElement('div');
             cardHeader.slot = 'header';
@@ -171,11 +185,132 @@ window.addEventListener('DOMContentLoaded', async function () {
 
             if (source) {
                 card.dataset.source = source;
-                card.addEventListener('click', () => {card.dataset.source && window.open(card.dataset.source, "_blank")});
+                card.addEventListener('click', () => { card.dataset.source && window.open(card.dataset.source, "_blank") });
             }
 
             grid.appendChild(card);
         });
+        
+        let projectData = [];
+        const repoCacheKey = "cachedRepos";
+        const cachedRepoJson = localStorage.getItem(repoCacheKey);
+        if (cachedRepoJson) {
+            const repos = JSON.parse(cachedRepoJson);
+            projectData = repos.map(data => {
+                return {
+                    title: data.name,
+                    accent: 'blue',
+                    body: data.description || 'See project on GitHub for more details',
+                    badge: langToShort(data.language) || 'Other',
+                    badgeVariant: 'success',
+                    source: data.html_url,
+
+                    updated_at: data.updated_at,
+                    stars: data.stargazers_count,
+                };
+            });
+
+            //projectData.sort((a,b) => b.stars - a.stars); // sort projects by star count (most popular first)
+            projectData.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)); // sort projects by last updated (most recently updated first)
+            projectData = projectData.slice(0, 10); // show only 10 projects
+
+            projectData.forEach(({ title, accent, body: bodyText, badge, badgeVariant, source }) => {
+                const card = document.createElement('fa-card');
+                card.setAttribute('hover', '');
+                card.setAttribute('accent', accent);
+
+                const cardHeader = document.createElement('div');
+                cardHeader.slot = 'header';
+                cardHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between;';
+
+                const cardTitle = document.createElement('fa-h3');
+                cardTitle.textContent = title;
+                cardHeader.appendChild(cardTitle);
+
+                const cardBadge = document.createElement('fa-badge');
+                cardBadge.setAttribute('variant', badgeVariant);
+                cardBadge.textContent = badge;
+                cardHeader.appendChild(cardBadge);
+                card.appendChild(cardHeader);
+
+                const cardBody = document.createElement('fa-p');
+                cardBody.textContent = bodyText;
+                card.appendChild(cardBody);
+
+                if (source) {
+                    card.dataset.source = source;
+                    card.addEventListener('click', () => {card.dataset.source && window.open(card.dataset.source, "_blank")});
+                }
+
+                grid.appendChild(card);
+            });
+        } else {
+            // try {
+            //     fetch("https://api.github.com/users/tettedev").then(res => {
+            //         res.json().then(json => {
+            //             const hasRepos = json.public_repos && json.public_repos > 0;
+            //             if (!hasRepos) return;
+
+            //             const url = json.repos_url;
+            //             fetch(url).then(res => {
+            //                 res.json().then(repos => {
+            //                     localStorage.setItem(repoCacheKey, JSON.stringify(repos));
+            //                     projectData = repos.map(data => {
+            //                         return {
+            //                             title: data.name,
+            //                             accent: 'blue',
+            //                             body: data.description || 'See project on GitHub for more details',
+            //                             badge: langToShort(data.language) || 'Other',
+            //                             badgeVariant: 'success',
+            //                             source: data.html_url,
+
+            //                             updated_at: data.updated_at,
+            //                             stars: data.stargazers_count,
+            //                         };
+            //                     });
+
+            //                     //projectData.sort((a,b) => b.stars - a.stars); // sort projects by star count (most popular first)
+            //                     projectData.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)); // sort projects by last updated (most recently updated first)
+            //                     projectData = projectData.slice(0, 10); // show only 10 projects
+
+            //                     projectData.forEach(({ title, accent, body: bodyText, badge, badgeVariant, source }) => {
+            //                         const card = document.createElement('fa-card');
+            //                         card.setAttribute('hover', '');
+            //                         card.setAttribute('accent', accent);
+
+            //                         const cardHeader = document.createElement('div');
+            //                         cardHeader.slot = 'header';
+            //                         cardHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between;';
+
+            //                         const cardTitle = document.createElement('fa-h3');
+            //                         cardTitle.textContent = title;
+            //                         cardHeader.appendChild(cardTitle);
+
+            //                         const cardBadge = document.createElement('fa-badge');
+            //                         cardBadge.setAttribute('variant', badgeVariant);
+            //                         cardBadge.textContent = badge;
+            //                         cardHeader.appendChild(cardBadge);
+            //                         card.appendChild(cardHeader);
+
+            //                         const cardBody = document.createElement('fa-p');
+            //                         cardBody.textContent = bodyText;
+            //                         card.appendChild(cardBody);
+
+            //                         if (source) {
+            //                             card.dataset.source = source;
+            //                             card.addEventListener('click', () => {card.dataset.source && window.open(card.dataset.source, "_blank")});
+            //                         }
+
+            //                         grid.appendChild(card);
+            //                     });
+            //                 });
+            //             });     
+            //         });
+            //     });
+            // } catch (err) {
+            //     console.warn("Failed to fetch GitHub projects, only displaying highlighted projects.");
+            // }
+        }
 
         projects.appendChild(grid);
         main.appendChild(projects);
@@ -190,14 +325,14 @@ window.addEventListener('DOMContentLoaded', async function () {
         aboutCard.setAttribute('padding', 'lg');
 
         const aboutP1 = document.createElement('fa-p');
-        aboutP1.textContent = `Bla bla bla about me`;
+        aboutP1.textContent = `Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.`;
         aboutCard.appendChild(aboutP1);
 
-        const spacer = document.createElement('fa-spacer');
-        spacer.setAttribute('size', 'md');
-        aboutCard.appendChild(spacer);
-
         if (!(location.hash === MAGIC_HASH() && localStorage.getItem(LS_KEY()) !== LS_VAL())) {
+            const spacer = document.createElement('fa-spacer');
+            spacer.setAttribute('size', 'md');
+            aboutCard.appendChild(spacer);
+
             const resetBtn = document.createElement('fa-button');
             resetBtn.setAttribute('variant', 'ghost');
             resetBtn.setAttribute('size', 'sm');
@@ -247,6 +382,7 @@ window.addEventListener('DOMContentLoaded', async function () {
     puzzleContainer.style.opacity = '0';
     puzzleContainer.style.pointerEvents = 'none';
 
+    // FIXME: this should not be shown if the user has already completed the puzzle, but for testing purposes we can show it every time for now
     const introMsg = document.createElement('div');
     introMsg.textContent = 'You know what? There might be something here after all...';
     introMsg.style.fontSize = '1.5rem';
