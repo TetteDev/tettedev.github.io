@@ -1,0 +1,412 @@
+/*
+ * ============================================================
+ *  FRUTIGER AERO DESIGN SYSTEM — fa-design-system.css
+ *  Foundation: CSS custom properties, base styles, animations
+ *  Era: 2004–2013 · Glossy · Glassy · Nature-Forward · Aqua
+ * ============================================================
+ */
+
+/* ── Google Font Import ──────────────────────────────────────
+   Source Sans Pro is the closest freely available match to
+   the humanist Frutiger/Segoe UI spirit of the era.
+   ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Source+Sans+3:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap');
+
+/* ═══════════════════════════════════════════════════════════
+   1. DESIGN TOKENS (CSS Custom Properties)
+   ═══════════════════════════════════════════════════════════ */
+:root {
+
+  /* ── Core colour palette ─────────────────────────────────
+     Sky blues → grass greens → warm amber/orange
+     Drawn from authentic FA era UI (Vista, Win7, early iOS)
+     ─────────────────────────────────────────────────────── */
+
+  /* Blues */
+  --fa-blue-deep:      #0032DB;   /* deep Vista blue */
+  --fa-blue-sky:       #0689E4;   /* clear sky blue  */
+  --fa-blue-light:     #3A9FD5;   /* soft sky        */
+  --fa-blue-pale:      #A8D8F0;   /* washed sky      */
+  --fa-blue-glass:     rgba(58, 159, 213, 0.18);
+
+  /* Greens */
+  --fa-green-grass:    #7CB342;   /* Vista grass      */
+  --fa-green-mid:      #71AB23;   /* saturated olive  */
+  --fa-green-light:    #B8D67A;   /* spring leaf      */
+  --fa-green-glass:    rgba(124, 179, 66, 0.15);
+
+  /* Ambers & Oranges */
+  --fa-amber:          #FBB905;   /* warm amber       */
+  --fa-orange:         #F5A623;   /* sunrise orange   */
+  --fa-orange-deep:    #D55E0F;   /* autumn ember     */
+
+  /* Neutrals */
+  --fa-white:          #FFFFFF;
+  --fa-off-white:      #F0F6FC;   /* aero surface     */
+  --fa-glass-white:    rgba(255, 255, 255, 0.72);
+  --fa-glass-white-lt: rgba(255, 255, 255, 0.45);
+  --fa-glass-border:   rgba(255, 255, 255, 0.60);
+  --fa-text-dark:      #1A3A4A;   /* deep teal-black  */
+  --fa-text-mid:       #2E5E72;
+  --fa-text-light:     #5F8FA3;
+  --fa-text-on-dark:   #E8F4FB;
+
+  /* Semantic */
+  --fa-primary:        var(--fa-blue-sky);
+  --fa-primary-dark:   var(--fa-blue-deep);
+  --fa-accent:         var(--fa-green-grass);
+  --fa-accent-dark:    var(--fa-green-mid);
+  --fa-warn:           var(--fa-amber);
+  --fa-danger:         var(--fa-orange-deep);
+  --fa-surface:        var(--fa-off-white);
+
+  /* ── Gradients ───────────────────────────────────────────
+     All gradients evoke the characteristic FA glossy layers.
+     ─────────────────────────────────────────────────────── */
+
+  /* Page / body background — deep sky to aurora */
+  --fa-grad-sky: linear-gradient(
+    160deg,
+    #c9e8f7 0%,
+    #dff2e4 35%,
+    #b8daf5 65%,
+    #d4eef8 100%
+  );
+
+  /* Glossy aqua button — the iconic Vista orb shine */
+  --fa-grad-btn-primary: linear-gradient(
+    180deg,
+    #5cc8f5 0%,
+    #1a9de0 48%,
+    #0678c1 49%,
+    #0a8fd6 100%
+  );
+  --fa-grad-btn-primary-hover: linear-gradient(
+    180deg,
+    #7fd8ff 0%,
+    #2db3f5 48%,
+    #0a8fd6 49%,
+    #14a3e8 100%
+  );
+
+  /* Glossy green button */
+  --fa-grad-btn-green: linear-gradient(
+    180deg,
+    #a8d96a 0%,
+    #6eb832 48%,
+    #4a9a0e 49%,
+    #5aac1e 100%
+  );
+
+  /* Glossy amber button */
+  --fa-grad-btn-amber: linear-gradient(
+    180deg,
+    #fdd96a 0%,
+    #f9bc18 48%,
+    #d9980a 49%,
+    #e8a812 100%
+  );
+
+  /* Glass panel fill */
+  --fa-grad-glass: linear-gradient(
+    145deg,
+    rgba(255,255,255,0.70) 0%,
+    rgba(255,255,255,0.30) 50%,
+    rgba(200,235,255,0.25) 100%
+  );
+
+  /* Glass panel — tinted blue */
+  --fa-grad-glass-blue: linear-gradient(
+    145deg,
+    rgba(180,225,255,0.65) 0%,
+    rgba(120,195,245,0.25) 50%,
+    rgba(80,170,230,0.20) 100%
+  );
+
+  /* Glass panel — tinted green */
+  --fa-grad-glass-green: linear-gradient(
+    145deg,
+    rgba(195,235,160,0.60) 0%,
+    rgba(150,210,100,0.22) 50%,
+    rgba(100,175,50,0.18) 100%
+  );
+
+  /* Inner gloss sheen (top highlight) */
+  --fa-grad-gloss: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.75) 0%,
+    rgba(255,255,255,0.08) 55%,
+    transparent 56%
+  );
+
+  /* Header / nav gradient */
+  --fa-grad-header: linear-gradient(
+    180deg,
+    rgba(255,255,255,0.90) 0%,
+    rgba(210,240,255,0.75) 100%
+  );
+
+  /* Footer gradient */
+  --fa-grad-footer: linear-gradient(
+    180deg,
+    rgba(200,230,248,0.80) 0%,
+    rgba(180,215,240,0.92) 100%
+  );
+
+  /* ── Glass / frosted-pane effects ────────────────────────
+     backdrop-filter: blur is the modern equivalent of the
+     Aero "frosted glass" window chrome effect.
+     ─────────────────────────────────────────────────────── */
+  --fa-glass-blur:        blur(14px) saturate(1.6);
+  --fa-glass-blur-heavy:  blur(22px) saturate(1.8);
+  --fa-glass-blur-light:  blur(7px)  saturate(1.4);
+
+  /* ── Borders ──────────────────────────────────────────── */
+  --fa-border-glass:      1px solid rgba(255,255,255,0.65);
+  --fa-border-glass-dark: 1px solid rgba(120,185,225,0.45);
+  --fa-border-blue:       1px solid rgba(6,137,228,0.35);
+  --fa-border-radius-sm:  6px;
+  --fa-border-radius:     12px;
+  --fa-border-radius-lg:  20px;
+  --fa-border-radius-xl:  32px;
+  --fa-border-radius-pill:9999px;
+
+  /* ── Shadows ─────────────────────────────────────────────
+     Layered shadows simulate the Vista era drop shadows and
+     soft glows seen on glass panels and glossy buttons.
+     ─────────────────────────────────────────────────────── */
+  --fa-shadow-sm:
+    0 1px 3px rgba(0,50,100,0.12),
+    0 1px 2px rgba(0,80,160,0.08);
+
+  --fa-shadow:
+    0 2px 6px rgba(0,50,100,0.14),
+    0 4px 16px rgba(0,80,180,0.10),
+    inset 0 1px 0 rgba(255,255,255,0.70);
+
+  --fa-shadow-lg:
+    0 4px 12px rgba(0,50,120,0.16),
+    0 8px 32px rgba(0,80,200,0.12),
+    inset 0 1px 0 rgba(255,255,255,0.75);
+
+  --fa-shadow-xl:
+    0 8px 24px rgba(0,50,120,0.20),
+    0 16px 48px rgba(0,80,200,0.14),
+    inset 0 1px 0 rgba(255,255,255,0.80);
+
+  --fa-shadow-glow-blue:
+    0 0 12px rgba(6,137,228,0.55),
+    0 0 28px rgba(6,137,228,0.25);
+
+  --fa-shadow-glow-green:
+    0 0 10px rgba(124,179,66,0.50),
+    0 0 24px rgba(124,179,66,0.22);
+
+  --fa-shadow-btn:
+    0 2px 4px rgba(0,60,140,0.30),
+    0 4px 12px rgba(0,80,180,0.20),
+    inset 0 1px 0 rgba(255,255,255,0.55),
+    inset 0 -1px 0 rgba(0,60,140,0.25);
+
+  --fa-shadow-inset:
+    inset 0 2px 6px rgba(0,50,120,0.18),
+    inset 0 1px 3px rgba(0,80,180,0.12);
+
+  /* ── Typography ──────────────────────────────────────────
+     Source Sans 3 (née Source Sans Pro) is the nearest
+     freely available match to Frutiger / Segoe UI.
+     ─────────────────────────────────────────────────────── */
+  --fa-font-family:     'Source Sans 3', 'Segoe UI', 'Frutiger', Arial, sans-serif;
+  --fa-font-mono:       'Consolas', 'Courier New', monospace;
+
+  --fa-text-xs:   0.75rem;    /*  12px */
+  --fa-text-sm:   0.875rem;   /*  14px */
+  --fa-text-base: 1rem;       /*  16px */
+  --fa-text-lg:   1.125rem;   /*  18px */
+  --fa-text-xl:   1.25rem;    /*  20px */
+  --fa-text-2xl:  1.5rem;     /*  24px */
+  --fa-text-3xl:  1.875rem;   /*  30px */
+  --fa-text-4xl:  2.25rem;    /*  36px */
+  --fa-text-5xl:  2.75rem;    /*  44px */
+
+  --fa-leading-tight:  1.25;
+  --fa-leading-normal: 1.6;
+  --fa-leading-loose:  1.85;
+
+  /* ── Spacing scale ───────────────────────────────────────
+     Generous breathing room is key to the airy FA feel.
+     ─────────────────────────────────────────────────────── */
+  --fa-space-1:   4px;
+  --fa-space-2:   8px;
+  --fa-space-3:  12px;
+  --fa-space-4:  16px;
+  --fa-space-5:  24px;
+  --fa-space-6:  32px;
+  --fa-space-7:  48px;
+  --fa-space-8:  64px;
+  --fa-space-9:  96px;
+
+  /* ── Transitions ─────────────────────────────────────────
+     Smooth, slightly springy — no harsh snaps.
+     ─────────────────────────────────────────────────────── */
+  --fa-ease:            cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --fa-ease-spring:     cubic-bezier(0.34, 1.56, 0.64, 1);
+  --fa-transition-fast: 120ms var(--fa-ease);
+  --fa-transition:      220ms var(--fa-ease);
+  --fa-transition-slow: 380ms var(--fa-ease);
+
+  /* ── Focus ring ──────────────────────────────────────────*/
+  --fa-focus-ring:
+    0 0 0 3px rgba(6,137,228,0.45),
+    0 0 0 1px rgba(6,137,228,0.80);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   2. GLOBAL RESET & BASE
+   ═══════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;
+  scroll-behavior: smooth;
+  -webkit-text-size-adjust: 100%;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   3. SHARED HOST (applied to every <fa-*> element)
+   ═══════════════════════════════════════════════════════════ */
+.fa-host-base {
+  font-family: var(--fa-font-family);
+  color: var(--fa-text-dark);
+  line-height: var(--fa-leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   4. UTILITY CLASSES (available on the light DOM)
+   ═══════════════════════════════════════════════════════════ */
+
+/* Glass panel mixin */
+.fa-glass {
+  background: var(--fa-grad-glass);
+  backdrop-filter: var(--fa-glass-blur);
+  -webkit-backdrop-filter: var(--fa-glass-blur);
+  border: var(--fa-border-glass);
+  box-shadow: var(--fa-shadow);
+  border-radius: var(--fa-border-radius);
+}
+
+/* Glossy surface mixin (not transparent — solid frosted) */
+.fa-glossy {
+  background: linear-gradient(
+    180deg,
+    #eaf7ff 0%,
+    #c8e8f8 48%,
+    #b0d8f0 49%,
+    #cce5f7 100%
+  );
+  border: 1px solid rgba(255,255,255,0.80);
+  box-shadow: var(--fa-shadow-lg);
+  border-radius: var(--fa-border-radius);
+}
+
+/* ── Text helpers ───────────────────────────────────────── */
+.fa-text-glow {
+  text-shadow:
+    0 0 8px rgba(6,137,228,0.60),
+    0 1px 3px rgba(0,0,0,0.20);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   5. KEYFRAME ANIMATIONS
+   ═══════════════════════════════════════════════════════════ */
+
+/* Subtle floating — for orbs and decorative elements */
+@keyframes fa-float {
+  0%, 100% { transform: translateY(0px);   }
+  50%       { transform: translateY(-8px);  }
+}
+
+/* Soft pulse glow — for badges, status dots */
+@keyframes fa-pulse-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(6,137,228,0.40); }
+  50%       { box-shadow: 0 0 18px rgba(6,137,228,0.70); }
+}
+
+/* Slide in from top (for notifications / toasts) */
+@keyframes fa-slide-down {
+  from {
+    opacity: 0;
+    transform: translateY(-14px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Fade in */
+@keyframes fa-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* Orb shimmer — rotating gloss highlight */
+@keyframes fa-shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+/* Progress bar shine sweep */
+@keyframes fa-shine-sweep {
+  0%   { left: -100%; }
+  60%  { left:  120%; }
+  100% { left:  120%; }
+}
+
+/* Spin — for loading indicators */
+@keyframes fa-spin {
+  from { transform: rotate(0deg);   }
+  to   { transform: rotate(360deg); }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   6. SCROLLBAR THEMING  (WebKit / Blink)
+   ═══════════════════════════════════════════════════════════ */
+::-webkit-scrollbar {
+  width:  10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: rgba(200,235,255,0.40);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #5cc8f5, #1a9de0);
+  border-radius: 10px;
+  border: 2px solid rgba(255,255,255,0.60);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #7fd8ff, #2db3f5);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   7. SELECTION COLOUR
+   ═══════════════════════════════════════════════════════════ */
+::selection {
+  background-color: rgba(6,137,228,0.30);
+  color: var(--fa-text-dark);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   8. FOCUS-VISIBLE GLOBAL RING
+   ═══════════════════════════════════════════════════════════ */
+:focus-visible {
+  outline: none;
+  box-shadow: var(--fa-focus-ring);
+}

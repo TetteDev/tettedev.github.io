@@ -3,3 +3,5 @@
 # Except this file (and javascript files)
 !.gitignore
 !*.js
+# Ignore all js files that are prefixed with an underscore (these are unminified source files)
+_*.js
