@@ -1,0 +1,13 @@
+# Ignore everything in this directory
+*
+# Except this file (and most common image types)
+!.gitignore
+!*.png
+!*.jpg
+!*.jpeg
+!*.gif
+!*.bmp
+!*.svg
+!*.ico
+!*.webp
+!*.tiff
