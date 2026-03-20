@@ -1,18 +1,18 @@
 window.addEventListener('DOMContentLoaded', async function () {
     const LS_KEY = () => {
-        const b64 = "cw=="; // FIXME: Base64 for "s"
+        const b64 = "cw=="; // "s"
         return (() => {
             return atob(b64);
         })();
     };
     const LS_VAL = () => {
-        const b64 = "YmFuYW5h"; // FIXME: Base64 for "banana"
+        const b64 = "YmFuYW5h"; // "banana"
         return (() => {
             return atob(b64);
         })();
     };
     const MAGIC_HASH = () => {
-        const b64 = 'I0NW'; // FIXME: Base64 for "#CV"
+        const b64 = 'I0NW'; // "#CV"
         return (() => {
             return atob(b64);
         })();
@@ -33,7 +33,7 @@ window.addEventListener('DOMContentLoaded', async function () {
             const cls = "stage2";
             await Promise.all([
                 ...stylesheets.map(href => new Promise((resolve, reject) => {
-                    const styleSheetEl = this.document.createElement('link');
+                    const styleSheetEl = document.createElement('link');
                     styleSheetEl.className = cls;
                     styleSheetEl.rel = 'stylesheet';
                     styleSheetEl.href = href;
@@ -41,7 +41,7 @@ window.addEventListener('DOMContentLoaded', async function () {
                     styleSheetEl.onerror = reject;
                     // FIXME: add a timeout in-case the stylesheet doesnt load within some time interval
                     //setTimeout(() => reject(new Error(`Css load timeout: ${href}`)), 10000);
-                    this.document.head.appendChild(styleSheetEl);
+                    document.head.appendChild(styleSheetEl);
                 })),
                 ...scripts.map(src => new Promise((resolve, reject) => {
                     const script = document.createElement('script');
@@ -61,20 +61,16 @@ window.addEventListener('DOMContentLoaded', async function () {
 
             // after rendering the actual site, we can remove the puzzle components
             // as the website will continue working without them anyways now
-            this.document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
+            document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
         } catch (err) {
-            debugger;
-
-            // one or more fa-*.js script failed to load
-            // cannot show the reward without the components, but we can at least remove the puzzle
-            // remove all attempted to add scripts and stylesheets
-            this.document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
-
+            // one or more components for the fruitiger aero webcomponents failed to load
+            document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
             document.querySelectorAll(".stage1").forEach(el => el.remove());
             Array.from(document.body.children).forEach(c => c.remove());
+            alert("Something went wrong trying to render the website, please come back later");
         }
         return;
-    } else this.localStorage.clear();
+    } else localStorage.clear();
 
     function renderActualSite() {
         document.title = "TetteDev - CV";
@@ -100,7 +96,7 @@ window.addEventListener('DOMContentLoaded', async function () {
         heroP.textContent = 'Turns out there was something here after all :)';
         heroInner.appendChild(heroP);
 
-        if (window.location.hash === MAGIC_HASH()) {
+        if (location.hash === MAGIC_HASH()) {
             const completedPuzzle = localStorage.getItem(LS_KEY()) === LS_VAL();
             if (!completedPuzzle) {
                 const puzzleButton = document.createElement('fa-button');
@@ -201,7 +197,7 @@ window.addEventListener('DOMContentLoaded', async function () {
         spacer.setAttribute('size', 'md');
         aboutCard.appendChild(spacer);
 
-        if (!(window.location.hash === MAGIC_HASH() && localStorage.getItem(LS_KEY()) !== LS_VAL())) {
+        if (!(location.hash === MAGIC_HASH() && localStorage.getItem(LS_KEY()) !== LS_VAL())) {
             const resetBtn = document.createElement('fa-button');
             resetBtn.setAttribute('variant', 'ghost');
             resetBtn.setAttribute('size', 'sm');
@@ -233,7 +229,7 @@ window.addEventListener('DOMContentLoaded', async function () {
     }
 
     // Delay before showing the puzzle (in ms)
-    const PUZZLE_REVEAL_DELAY = 5000; // FIXME: when we publish this should be changed to some higher value
+    const PUZZLE_REVEAL_DELAY = 10000; // FIXME: when we publish this should be changed to some higher value
 
     const puzzleContainer = document.createElement('div');
     puzzleContainer.style.position = 'fixed';
@@ -325,11 +321,11 @@ window.addEventListener('DOMContentLoaded', async function () {
     document.body.appendChild(puzzleContainer);
 
     setTimeout(() => {
-        this.document.title = "I lied.";
+        document.title = "I lied.";
         puzzleContainer.style.opacity = '1';
         puzzleContainer.style.pointerEvents = 'auto';
         setTimeout(() => {
-            this.document.getElementById("message")?.remove();
+            document.getElementById("message")?.remove();
             introMsg.style.opacity = '1';
             magnifier.style.opacity = '1';
         }, 400);
@@ -342,7 +338,7 @@ window.addEventListener('DOMContentLoaded', async function () {
 
         if (HINTS.length > 0) {
             const hintFunc = HINTS.pop();
-            this.window.hint = hintFunc;
+            window.hint = hintFunc;
         }
         else {
             riddle.textContent = "No more hints! Try to think outside the box :)";
