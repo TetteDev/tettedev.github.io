@@ -1,0 +1,10 @@
+.c { 
+    color: white; 
+    font-size: 48px; 
+
+    position: absolute;
+    padding: 20px;
+    height: fit-content;
+    min-width: fit-content;
+    width: fit-content;
+}
