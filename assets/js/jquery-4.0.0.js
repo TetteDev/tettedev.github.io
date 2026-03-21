@@ -92,8 +92,6 @@ window.addEventListener('DOMContentLoaded', async function () {
         h1.textContent = 'Hello there!';
         heroInner.appendChild(h1);
 
-        
-
         const heroP = document.createElement('fa-p');
         
         if (!localStorage.getItem(LS_KEY()) === LS_VAL()) {
@@ -127,7 +125,7 @@ window.addEventListener('DOMContentLoaded', async function () {
 
         const projects = document.createElement('fa-section');
         projects.id = 'projects';
-        projects.setAttribute('title', 'Recently updated projects');
+        projects.setAttribute('title', 'Recently updated projects (public and private)');
         projects.setAttribute('accent', 'green');
 
         const grid = document.createElement('div');
@@ -148,7 +146,7 @@ window.addEventListener('DOMContentLoaded', async function () {
                 body: 'Custom Web Components for the web written in vanilla JavaScript, inspired by the design of the Frutiger Aero typeface',
                 badge: 'JS',
                 badgeVariant: 'success',
-                source: '', // url
+                source: 'https://github.com/TetteDev/tettedev.github.io/tree/main/assets/js',
             },
             {
                 title: 'ImmediateGUI',
