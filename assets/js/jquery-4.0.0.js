@@ -28,9 +28,8 @@ window.addEventListener('DOMContentLoaded', async function () {
             "assets/js/fa-typography.js"
         ];
         const stylesheets = [ "assets/css/fa-design-system.css" ];
-
+        const cls = "stage2";
         try {
-            const cls = "stage2";
             await Promise.all([
                 ...stylesheets.map(href => new Promise((resolve, reject) => {
                     const styleSheetEl = document.createElement('link');
@@ -63,6 +62,7 @@ window.addEventListener('DOMContentLoaded', async function () {
             // as the website will continue working without them anyways now
             document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
         } catch (err) {
+            console.error("Error loading components:", err);
             // one or more components for the fruitiger aero webcomponents failed to load
             document.querySelectorAll(`.${cls}`).forEach(el => el.remove());
             document.querySelectorAll(".stage1").forEach(el => el.remove());
@@ -125,7 +125,7 @@ window.addEventListener('DOMContentLoaded', async function () {
 
         const projects = document.createElement('fa-section');
         projects.id = 'projects';
-        projects.setAttribute('title', 'Recently updated projects (public and private)');
+        projects.setAttribute('title', 'Some of my projects');
         projects.setAttribute('accent', 'green');
 
         const grid = document.createElement('div');
@@ -162,6 +162,7 @@ window.addEventListener('DOMContentLoaded', async function () {
             const card = document.createElement('fa-card');
             card.setAttribute('hover', '');
             card.setAttribute('accent', 'amber');
+            card.setAttribute('spotlight', 'true');
 
             const cardHeader = document.createElement('div');
             cardHeader.slot = 'header';
@@ -188,31 +189,42 @@ window.addEventListener('DOMContentLoaded', async function () {
 
             grid.appendChild(card);
         });
-        
-        let projectData = [];
-        const repoCacheKey = "cachedRepos";
-        const cachedRepoJson = localStorage.getItem(repoCacheKey);
-        if (cachedRepoJson) {
-            const repos = JSON.parse(cachedRepoJson);
-            projectData = repos.map(data => {
-                return {
-                    title: data.name,
-                    accent: 'blue',
-                    body: data.description || 'See project on GitHub for more details',
-                    badge: langToShort(data.language) || 'Other',
-                    badgeVariant: 'success',
-                    source: data.html_url,
 
-                    updated_at: data.updated_at,
-                    stars: data.stargazers_count,
-                };
+        function renderProjects(json) {
+            const EXLUDE_ARCHIVED = true; // whether to exclude archived projects from the list
+            const EXPLICIT_IGNORES = [ 'tettedev.github.io', 'TetteDev' ]; // exclude profile repo and website repo
+
+            const ORDER_BY_UPDATED = false; // whether to order projects by last updated time (most recent first) instead of stargazer count
+            const ORDER_BY_STARS = true; // whether to order projects by stargazer count (most stars first)
+
+            const repos = typeof json === 'string' ? JSON.parse(json) : json;
+            if (ORDER_BY_UPDATED === true) {
+                repos.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+            } else if (ORDER_BY_STARS === true) {
+                repos.sort((a, b) => b.stargazers_count - a.stargazers_count);
+            }
+
+            grid.querySelectorAll('fa-card').forEach(c => {
+                if (!c.hasAttribute('spotlight')) c.remove();
             });
 
-            //projectData.sort((a,b) => b.stars - a.stars); // sort projects by star count (most popular first)
-            projectData.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)); // sort projects by last updated (most recently updated first)
-            projectData = projectData.slice(0, 10); // show only 10 projects
+            for (const repoData of repos) {
+                if (EXLUDE_ARCHIVED && repoData.archived) continue;
 
-            projectData.forEach(({ title, accent, body: bodyText, badge, badgeVariant, source }) => {
+                const { name, description, language, html_url, updated_at, stargazers_count } = repoData;
+                const { title, accent, body, badge, badgeVariant, source } = {
+                    title: name,
+                    accent: 'blue',
+                    body: description || 'See project on GitHub for more details',
+                    badge: langToShort(language) || 'Other',
+                    badgeVariant: 'success',
+                    source: html_url,
+                    updated_at,
+                    stars: stargazers_count,
+                };
+
+                if (EXPLICIT_IGNORES.includes(name)) continue;
+
                 const card = document.createElement('fa-card');
                 card.setAttribute('hover', '');
                 card.setAttribute('accent', accent);
@@ -232,7 +244,7 @@ window.addEventListener('DOMContentLoaded', async function () {
                 card.appendChild(cardHeader);
 
                 const cardBody = document.createElement('fa-p');
-                cardBody.textContent = bodyText;
+                cardBody.textContent = body;
                 card.appendChild(cardBody);
 
                 if (source) {
@@ -241,77 +253,70 @@ window.addEventListener('DOMContentLoaded', async function () {
                 }
 
                 grid.appendChild(card);
+            }
+        }
+        async function fetchProjects() {
+            const repoUrl = "https://api.github.com/users/TetteDev/repos";
+            return fetch(repoUrl).then(res => {
+                const isOk = res.ok;
+                if (isOk) {
+                    return res.json();
+                }
+                else {
+                    throw new Error(`GitHub API request failed with status ${res.status}`);
+                }
             });
-        } else {
-            // try {
-            //     fetch("https://api.github.com/users/tettedev").then(res => {
-            //         res.json().then(json => {
-            //             const hasRepos = json.public_repos && json.public_repos > 0;
-            //             if (!hasRepos) return;
-
-            //             const url = json.repos_url;
-            //             fetch(url).then(res => {
-            //                 res.json().then(repos => {
-            //                     localStorage.setItem(repoCacheKey, JSON.stringify(repos));
-            //                     projectData = repos.map(data => {
-            //                         return {
-            //                             title: data.name,
-            //                             accent: 'blue',
-            //                             body: data.description || 'See project on GitHub for more details',
-            //                             badge: langToShort(data.language) || 'Other',
-            //                             badgeVariant: 'success',
-            //                             source: data.html_url,
-
-            //                             updated_at: data.updated_at,
-            //                             stars: data.stargazers_count,
-            //                         };
-            //                     });
-
-            //                     //projectData.sort((a,b) => b.stars - a.stars); // sort projects by star count (most popular first)
-            //                     projectData.sort((a,b) => new Date(b.updated_at) - new Date(a.updated_at)); // sort projects by last updated (most recently updated first)
-            //                     projectData = projectData.slice(0, 10); // show only 10 projects
-
-            //                     projectData.forEach(({ title, accent, body: bodyText, badge, badgeVariant, source }) => {
-            //                         const card = document.createElement('fa-card');
-            //                         card.setAttribute('hover', '');
-            //                         card.setAttribute('accent', accent);
-
-            //                         const cardHeader = document.createElement('div');
-            //                         cardHeader.slot = 'header';
-            //                         cardHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between;';
-
-            //                         const cardTitle = document.createElement('fa-h3');
-            //                         cardTitle.textContent = title;
-            //                         cardHeader.appendChild(cardTitle);
-
-            //                         const cardBadge = document.createElement('fa-badge');
-            //                         cardBadge.setAttribute('variant', badgeVariant);
-            //                         cardBadge.textContent = badge;
-            //                         cardHeader.appendChild(cardBadge);
-            //                         card.appendChild(cardHeader);
-
-            //                         const cardBody = document.createElement('fa-p');
-            //                         cardBody.textContent = bodyText;
-            //                         card.appendChild(cardBody);
-
-            //                         if (source) {
-            //                             card.dataset.source = source;
-            //                             card.addEventListener('click', () => {card.dataset.source && window.open(card.dataset.source, "_blank")});
-            //                         }
-
-            //                         grid.appendChild(card);
-            //                     });
-            //                 });
-            //             });     
-            //         });
-            //     });
-            // } catch (err) {
-            //     console.warn("Failed to fetch GitHub projects, only displaying highlighted projects.");
-            // }
+        }
+        
+        const DONT_FETCH_REPOS_AUTO = true;
+        const repoCacheKey = "cachedRepos";
+        const cachedRepoJson = localStorage.getItem(repoCacheKey);
+        if (cachedRepoJson) {
+            renderProjects(cachedRepoJson);
+        } 
+        else {
+            if (DONT_FETCH_REPOS_AUTO === false) {
+                try {
+                    fetchProjects().then(json => {
+                        localStorage.setItem(repoCacheKey, JSON.stringify(json));
+                        renderProjects(json);
+                    });
+                } catch (err) {
+                    console.error("Error fetching repositories:", err);
+                    localStorage.setItem(repoCacheKey, JSON.stringify([]));
+                }
+            }
         }
 
         projects.appendChild(grid);
         main.appendChild(projects);
+
+        if (cachedRepoJson || (DONT_FETCH_REPOS_AUTO === true)) {
+            const clearCacheBtn = document.createElement('fa-button');
+            clearCacheBtn.setAttribute('variant', 'warning');
+            clearCacheBtn.setAttribute('size', 'sm');
+            clearCacheBtn.textContent = cachedRepoJson ? 'Invalidate Repository Cache' : 'Fetch Repositories';
+            clearCacheBtn.style.marginTop = '16px';
+            clearCacheBtn.addEventListener('click', () => {
+                const confirmClear = confirm("You are about to make one (1) request to the public GitHub API. Data will be cached for future visits but there is still a chance you can get rate limited if you click this button multiple times. Do you want to proceed?");
+                if (confirmClear) {
+                    const backup = localStorage.getItem(repoCacheKey);
+                    try {
+                        localStorage.removeItem(repoCacheKey);
+                        fetchProjects().then(json => {
+                            localStorage.setItem(repoCacheKey, JSON.stringify(json));
+                            renderProjects(json);
+                        });
+                    } catch (err) {
+                        console.error("Error clearing cache:", err);
+                        if (backup) localStorage.setItem(repoCacheKey, backup);
+                    }
+                    
+                }
+            });
+
+            projects.appendChild(clearCacheBtn);
+        }
 
         const about = document.createElement('fa-section');
         about.id = 'about';
