@@ -16,7 +16,6 @@
                 styleSheetEl.href = href;
                 styleSheetEl.onload = resolve;
                 styleSheetEl.onerror = reject;
-                /* JS_PARSER.PY - OMITTED DEBUG CODE */
                 document.head.appendChild(styleSheetEl);
             })),
             ...scripts.map(src => new Promise((resolve, reject) => {
@@ -24,12 +23,9 @@
                 script.src = src;
                 script.onload = resolve;
                 script.onerror = reject;
-                /* JS_PARSER.PY - OMITTED DEBUG CODE */
                 document.head.appendChild(script);
             }
         ))]);
-
-        /* JS_PARSER.PY - OMITTED DEBUG CODE */
 
         RenderWebsite();
     } catch (err) {
@@ -279,8 +275,63 @@
         aboutP1.textContent = `Lorem ipsum dolor sit amet consectetur adipiscing elit. Quisque faucibus ex sapien vitae pellentesque sem placerat. In id cursus mi pretium tellus duis convallis. Tempus leo eu aenean sed diam urna tempor. Pulvinar vivamus fringilla lacus nec metus bibendum egestas. Iaculis massa nisl malesuada lacinia integer nunc posuere. Ut hendrerit semper vel class aptent taciti sociosqu. Ad litora torquent per conubia nostra inceptos himenaeos.`;
         aboutCard.appendChild(aboutP1);
         about.appendChild(aboutCard);
-        main.appendChild(about);
 
+        const didYouKnow = document.createElement('fa-section');
+        didYouKnow.setAttribute('title', 'Did you know?');
+        didYouKnow.setAttribute('accent', 'blue');
+
+        const didYouKnowCard = document.createElement('fa-card');
+        didYouKnowCard.setAttribute('variant', 'glass');
+
+        const didYouKnowP1 = document.createElement('fa-p');
+        didYouKnowP1.textContent = `This page used to be locked behind a small puzzle that you had to solve, but due to the fact that many users had trouble solving it and thus did not get to see my website I decided to remove it. You can still check out the puzzles via the links down below though.`;
+        didYouKnowCard.appendChild(didYouKnowP1);
+        didYouKnow.appendChild(didYouKnowCard);
+
+        const puzzlesFiles = [
+            { name: "Puzzle 1", path: "assets/fun/puzzle1/index.html", description: "Can you find the super secret code?" },
+            { name: "Puzzle 2", path: "" },
+        ];
+        if (puzzlesFiles.length > 0) {
+            didYouKnowCard.style.marginBottom = '24px';
+
+            const puzzleGrid = document.createElement('fa-grid');
+            puzzleGrid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;';
+            const tidyName = (input, fallbackIdx) => input || (fallbackIdx !== undefined ? `Puzzle ${fallbackIdx + 1}` : "Untitled Puzzle");
+
+            puzzlesFiles.forEach(({ name, path = '', description = 'No description available', difficulty = 'Puzzle' }, idx) => {
+                const puzzleCard = document.createElement('fa-card');
+                puzzleCard.setAttribute('hover', '');
+                puzzleCard.setAttribute('accent', 'green');
+
+                const puzzleCardHeader = document.createElement('div');
+                puzzleCardHeader.slot = 'header';
+                puzzleCardHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between;';
+
+                const puzzleCardTitle = document.createElement('fa-h3');
+                puzzleCardTitle.textContent = tidyName(name, idx);
+                puzzleCardHeader.appendChild(puzzleCardTitle);
+
+                const puzzleCardBadge = document.createElement('fa-badge');
+                puzzleCardBadge.setAttribute('variant', 'amber');
+                puzzleCardBadge.textContent = difficulty;
+                puzzleCardHeader.appendChild(puzzleCardBadge);
+                puzzleCard.appendChild(puzzleCardHeader);
+
+                const puzzleCardBody = document.createElement('fa-p');
+                puzzleCardBody.textContent = description;
+                puzzleCard.appendChild(puzzleCardBody);
+
+                if (path && path.trim() !== "") puzzleCard.addEventListener('click', () => { window.open(path, "_blank"); });
+                
+                puzzleGrid.appendChild(puzzleCard);
+            });
+
+            didYouKnow.appendChild(puzzleGrid);
+        }
+
+        main.appendChild(about);
+        main.appendChild(didYouKnow);
         body.appendChild(main);
 
         const footer = document.createElement('fa-footer');
@@ -309,7 +360,7 @@
         document.getElementById("loader")?.remove();
         document.querySelector('script[class="stage1"]')?.remove();
 
-        // Clear any existing frutiger aero style related
+        // Clear any existing FA components
         scripts.forEach(src => {
             const script = document.querySelector(`script[src="${src}"]`);
             if (script) script.remove();
