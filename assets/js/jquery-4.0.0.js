@@ -300,12 +300,14 @@
         /* JS_PARSER.PY - OMITTED DEBUG CODE */
 
         setTimeout(() => {
-            if (document.getElementById("message")) document.getElementById("message").remove();
-            if (document.getElementById("loader")) document.getElementById("loader").remove();
+            document.getElementById("message")?.remove();
+            document.getElementById("loader")?.remove();
+            document.querySelector('script[class="stage1"]')?.remove();
         }, 500);
     }
     function RenderFallback(err) {
         document.getElementById("loader")?.remove();
+        document.querySelector('script[class="stage1"]')?.remove();
 
         // Clear any existing frutiger aero style related
         scripts.forEach(src => {
