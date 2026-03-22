@@ -10,8 +10,8 @@
     <body>
         <noscript><span style="color:black;font-size:48px;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);padding:20px;height:fit-content;min-width:fit-content;width:fit-content;">JavaScript is disabled in your browser. Please enable JavaScript to view this site.</span>
         </noscript>
+        
         <span id="message" class="hide">Nothing to see here yet.</span>
-
         <span id="loader" class="hide">Loading</span>
         <script class="stage1">
             const loader = document.getElementById("loader");
@@ -20,9 +20,12 @@
             const updateRateMs = 500;
             let loaderInterval = null;
             const stepLoadingAnimation = () => {
-                if (!loader) { 
-                    clearInterval(loaderInterval);
-                    loaderInterval = null;
+                if (!loader || document.querySelector('fa-body') !== null) { 
+                    if (typeof loaderInterval === "number") {
+                        clearInterval(loaderInterval);
+                        loaderInterval = null;
+                    }
+                    loader?.remove();
                     return;
                 }
 

@@ -297,8 +297,12 @@
         // Clear whatever puzzle related elements are still present in the DOM just in case
         document.querySelectorAll('.stage1').forEach(el => { el.remove(); });
 
-        // Optional
-        //document.querySelectorAll('script[src^="assets/js/fa-"]').forEach(s => { s.remove(); });
+        /* JS_PARSER.PY - OMITTED DEBUG CODE */
+
+        setTimeout(() => {
+            if (document.getElementById("message")) document.getElementById("message").remove();
+            if (document.getElementById("loader")) document.getElementById("loader").remove();
+        }, 500);
     }
     function RenderFallback(err) {
         document.getElementById("loader")?.remove();
