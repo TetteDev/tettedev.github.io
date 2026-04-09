@@ -11,7 +11,7 @@ function isFontAvailable(name) {
   const fallbackW = ctx.measureText(testStr).width;
   ctx.font        = `12px "${name}", monospace`;
   return ctx.measureText(testStr).width !== fallbackW;
-}
+};
 
 fontFamilyInput.addEventListener('input', () => {
   const name = fontFamilyInput.value.trim();
@@ -57,7 +57,12 @@ function selectFile(file) {
   convertBtn.disabled = false;
   statusText.textContent = 'Ready to convert.';
   downloadArea.innerHTML = '';
-  probeFps(file);
+  if (file.type.startsWith('image/')) {
+    const fpsInput = document.getElementById('outputFps');
+    fpsInput.placeholder = 'N/A (image)';
+  } else {
+    probeFps(file);
+  }
 }
 
 function probeFps(file) {
@@ -221,16 +226,20 @@ convertBtn.addEventListener('click', async () => {
   settings.asciiChars = settings.asciiChars.split('').reverse().join('');
 
   try {
-    const { url, mimeType } = await runConversion(selectedFile, settings);
-    const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
-    const a   = document.createElement('a');
-    a.href      = url;
-    a.download  = `ascii_output.${ext}`;
-    a.className = 'download-btn';
-    a.textContent = `Download ascii_output.${ext}`;
-    downloadArea.appendChild(a);
-    statusText.textContent = 'Done!';
-    showPlayer(url);
+    if (selectedFile.type.startsWith('image/')) {
+      await convertImage(selectedFile, settings);
+    } else {
+      const { url, mimeType } = await runConversion(selectedFile, settings);
+      const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
+      const a   = document.createElement('a');
+      a.href      = url;
+      a.download  = `ascii_output.${ext}`;
+      a.className = 'download-btn';
+      a.textContent = `Download ascii_output.${ext}`;
+      downloadArea.appendChild(a);
+      statusText.textContent = 'Done!';
+      showPlayer(url);
+    }
   } catch (err) {
     if (err.message === 'aborted') {
       statusText.textContent = 'Conversion aborted.';
@@ -243,6 +252,57 @@ convertBtn.addEventListener('click', async () => {
   abortBtn.style.display = 'none';
   convertBtn.disabled = false;
 });
+
+// ── Image conversion ─────────────────────────────────────────────────────────
+async function convertImage(file, settings) {
+  const { asciiWidth, fontSize, fontFamily, asciiChars, grayscale } = settings;
+
+  statusText.textContent = 'Building font masks…';
+  const charInfo = buildCharMaskLUT(fontSize, fontFamily, asciiChars);
+  const { cw, ch } = charInfo;
+  const aspectCorrection = cw / ch;
+
+  const img = new Image();
+  const objectUrl = URL.createObjectURL(file);
+  await new Promise((resolve, reject) => {
+    img.onload  = resolve;
+    img.onerror = () => reject(new Error('Failed to load image.'));
+    img.src = objectUrl;
+  });
+
+  const asciiH = Math.max(1, Math.round(asciiWidth * (img.naturalHeight / img.naturalWidth) * aspectCorrection));
+  const outW   = asciiWidth * cw;
+  const outH   = asciiH    * ch;
+
+  const srcCanvas = new OffscreenCanvas(asciiWidth, asciiH);
+  const srcCtx    = srcCanvas.getContext('2d', { willReadFrequently: true });
+  srcCtx.drawImage(img, 0, 0, asciiWidth, asciiH);
+  URL.revokeObjectURL(objectUrl);
+
+  previewCanvas.width  = outW;
+  previewCanvas.height = outH;
+  previewPanel.style.display = 'block';
+  previewCanvas.style.display = 'block';
+  document.getElementById('playerWrap').style.display = 'none';
+  document.getElementById('previewTitle').textContent = 'Output Preview';
+  const outCtx = previewCanvas.getContext('2d');
+
+  statusText.textContent = 'Rendering…';
+  renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo);
+
+  progressFill.style.width = '100%';
+
+  const quality = 1.0; // default for toBlob('image/jpeg'); ignored for PNG
+  const blob = await new Promise(resolve => previewCanvas.toBlob(resolve, 'image/png', quality, true));
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href      = url;
+  a.download  = 'ascii_output.png';
+  a.className = 'download-btn';
+  a.textContent = 'Download ascii_output.png';
+  downloadArea.appendChild(a);
+  statusText.textContent = 'Done!';
+}
 
 // ── Output player ────────────────────────────────────────────────────────────
 function formatTime(s) {
