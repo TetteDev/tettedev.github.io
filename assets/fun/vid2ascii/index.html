@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Video to ASCII Video</title>
+<link rel="stylesheet" href="assets/css/style.css">
+</head>
+<body>
+
+<h1>Video to ASCII Video</h1>
+
+<div class="panel">
+  <div class="drop-zone" id="dropZone">
+    <div id="dropLabel">Drop a video file here, or click to select</div>
+    <input type="file" id="fileInput" accept="video/*" style="display:none">
+  </div>
+</div>
+
+<div class="panel">
+  <div class="panel-title">Settings</div>
+  <div class="settings-grid">
+
+    <div class="field">
+      <label for="asciiWidth">ASCII Width (characters)</label>
+      <input type="number" id="asciiWidth" value="120" min="20" max="400">
+      <div class="hint">Height is auto-calculated to maintain aspect ratio.</div>
+    </div>
+
+    <div class="field">
+      <label for="fontFamily">Font Family</label>
+      <div style="display:flex;align-items:center;gap:7px;">
+        <input type="text" id="fontFamily" value="Courier New" style="flex:1">
+        <span id="fontIndicator" class="font-indicator font-ok">&#10003;</span>
+      </div>
+      <div class="hint"><b>Must be a monospace font</b> installed on your system.</div>
+    </div>
+
+    <div class="field">
+      <label for="fontSize">Font Size (px)</label>
+      <input type="number" id="fontSize" value="10" min="6" max="32">
+      <div class="hint">Affects output resolution. Larger = bigger image.</div>
+    </div>
+
+    <div class="field">
+      <label for="asciiChars">Character Set (darkest → lightest)</label>
+      <input type="text" id="asciiChars" value="@%#*+=-:. ">
+      <div class="hint">Try with different character sets from this <a href="https://inkmeascii.com/blog/best-ascii-characters/" target="_blank" rel="noopener noreferrer">site</a> or come up with your own.</div>
+    </div>
+
+    <div class="field toggle">
+      <input type="checkbox" id="grayscale">
+      <label for="grayscale">Grayscale output</label>
+    </div>
+
+    <div class="field toggle">
+      <input type="checkbox" id="keepAudio" checked>
+      <label for="keepAudio">Keep audio</label>
+    </div>
+
+    <div class="field">
+      <label for="outputFps">Output FPS</label>
+      <input type="number" id="outputFps" placeholder="Same as source" min="1" max="120">
+      <div class="hint">Leave empty to match the source video's FPS.</div>
+    </div>
+
+  </div>
+</div>
+
+<div class="panel">
+  <div class="actions">
+    <button id="convertBtn" disabled>Convert</button>
+    <button id="abortBtn" style="display:none;background:#7b2020">Abort</button>
+    <span class="status" id="statusText">Select a video to begin.</span>
+  </div>
+  <div class="progress-bar" id="progressBar" style="display:none">
+    <div class="progress-fill" id="progressFill"></div>
+  </div>
+  <div id="downloadArea"></div>
+  <div class="warning" id="audioWarning" style="display:none">
+    Audio capture depends on browser support. If the output has no audio, try Chrome/Edge.
+  </div>
+</div>
+
+<div class="panel" id="previewPanel">
+  <div class="panel-title" id="previewTitle">Live Preview</div>
+  <div style="margin-top: 10px; overflow: auto;">
+    <canvas id="previewCanvas"></canvas>
+  </div>
+  <div id="playerWrap" style="display:none">
+    <div class="player-wrap">
+      <video id="outputVideo" playsinline></video>
+    </div>
+    <div class="player-controls">
+      <button class="ctrl-btn" id="playBtn" title="Play / Pause">&#9654;</button>
+      <span class="ctrl-time" id="timeCurrent">0:00</span>
+      <div class="seek-wrap" id="seekWrap">
+        <div class="seek-track"></div>
+        <div class="seek-fill" id="seekFill"></div>
+        <div class="seek-thumb" id="seekThumb"></div>
+      </div>
+      <span class="ctrl-time" id="timeDuration">0:00</span>
+      <div class="vol-wrap">
+        <button class="ctrl-btn" id="muteBtn" title="Mute / Unmute">&#128264;</button>
+        <input type="range" class="vol-slider" id="volSlider" min="0" max="1" step="0.02" value="1">
+      </div>
+      <button class="ctrl-btn" id="fsBtn" title="Fullscreen">&#x26F6;</button>
+    </div>
+  </div>
+</div>
+
+<script src="assets/js/main.js"></script>
+</body>
+</html>

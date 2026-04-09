@@ -9,20 +9,34 @@
     ]; 
     const stylesheets = [ "assets/css/fa-design-system.css" ];
     try {
+        const componentLoadTimeout = 10000; // 10 seconds
         await Promise.all([
             ...stylesheets.map(href => new Promise((resolve, reject) => {
                 const styleSheetEl = document.createElement('link');
                 styleSheetEl.rel = 'stylesheet';
+                styleSheetEl.fetchPriority = 'high';
+                
+                // FIXME: breaks locally viewing the website due to CORS issues
+                //styleSheetEl.crossOrigin = 'anonymous';
+
+                let cancellationToken = new AbortController();
+                let timeoutId = setTimeout(() => { cancellationToken?.abort(); reject(new Error(`Stylesheet load timed out: ${href}`)); }, componentLoadTimeout);
+
+                styleSheetEl.addEventListener('load', () => { clearTimeout(timeoutId); cancellationToken = null; resolve(); }, { once: true, signal: cancellationToken.signal });
+                styleSheetEl.addEventListener('error', () => { clearTimeout(timeoutId); cancellationToken = null; reject(new Error(`Stylesheet failed to load: ${href}`)); }, { once: true, signal: cancellationToken.signal });
+
                 styleSheetEl.href = href;
-                styleSheetEl.onload = resolve;
-                styleSheetEl.onerror = reject;
                 document.head.appendChild(styleSheetEl);
             })),
             ...scripts.map(src => new Promise((resolve, reject) => {
                 const script = document.createElement('script');
+                script.async = true;
+                let cancellationToken = new AbortController();
+                let timeoutId = setTimeout(() => { cancellationToken?.abort(); reject(new Error(`Script load timed out: ${src}`)); }, componentLoadTimeout);
+                script.addEventListener('load', () => { clearTimeout(timeoutId); cancellationToken = null; resolve(); }, { once: true, signal: cancellationToken.signal });
+                script.addEventListener('error', () => { clearTimeout(timeoutId); cancellationToken = null; reject(new Error(`Script failed to load: ${src}`)); }, { once: true, signal: cancellationToken.signal });
+
                 script.src = src;
-                script.onload = resolve;
-                script.onerror = reject;
                 document.head.appendChild(script);
             }
         ))]);
@@ -33,7 +47,43 @@
     }
 
     function RenderWebsite() {
-        if (location.hash === "#CV") history?.replaceState(null, null, location.pathname);
+        function remember(key, value) {
+            if (typeof key !== 'string' || value === null) throw new Error("Key and value must be non-null");
+            try {
+                const localStorageKey = `visitor_data`;
+                let storedData = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
+                storedData[key] = value;
+                localStorage.setItem(localStorageKey, JSON.stringify(storedData));
+            } catch (err) {
+                const expires = new Date(Date.now() + 365*24*60*60*1000).toUTCString(); // 1 year
+                document.cookie = `visitor_${key}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict`;
+            }
+        }
+        function recall(key) { 
+            if (typeof key !== 'string') throw new Error("Key must be a string");
+            try {
+                const localStorageKey = `visitor_data`;
+                const storedData = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
+                return storedData[key] || null;
+            } catch (err) {
+                const match = document.cookie.match(new RegExp(`(?:^|; )visitor_${key}=([^;]*)`));
+                return match ? decodeURIComponent(match[1]) : null;
+            }
+        }
+        function forget(key) {
+            if (typeof key !== 'string') throw new Error("Key must be a string");
+            try {
+                const localStorageKey = `visitor_data`;
+                let storedData = JSON.parse(localStorage.getItem(localStorageKey) || '{}');
+                if (typeof storedData[key] !== 'undefined') {
+                    delete storedData[key];
+                    localStorage.setItem(localStorageKey, JSON.stringify(storedData));
+                }
+            } catch (err) {
+                document.cookie = `visitor_${key}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`;
+            }
+        }
+
         Array.from(document.body.children).forEach(c => { if (c.tagName !== 'NOSCRIPT') c.remove(); });
 
         document.title = "TetteDev";
@@ -67,21 +117,128 @@
         hero.appendChild(heroInner);
         main.appendChild(hero);
 
+        const langToShort = (full) => {
+            switch (full) {
+                case "JavaScript": return "JS";
+                case "TypeScript": return "TS";
+                case "Shell": return "SH";
+                case "PowerShell": return "PS";
+                default: return full;
+            }
+        };
+
+        const gists = document.createElement('fa-section');
+        gists.id = 'gists';
+        gists.setAttribute('title', 'Some of my most recent Gists');
+        gists.setAttribute('accent', 'amber');
+
+        const gistsGrid = document.createElement('div');
+        gistsGrid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;';
+
+        async function fetchGists() {
+            const countGists = 8;
+            const gistsUrl = `https://api.github.com/users/TetteDev/gists?per_page=${countGists}`;
+            return fetch(gistsUrl).then(res => {
+                const isOk = res.ok;
+                if (isOk) {
+                    return res.json();
+                }
+                else {
+                    throw new Error(`GitHub API request failed with status ${res.status}`);
+                }
+            });
+        }
+        function renderGists(json) { 
+            const MAX_GISTS = 9999; // maximum number of gists to display (after filtering and sorting)
+            // NOTE: inside fetchGists, we set per page to 8, so this MAX_GISTS variable is mostly just a fallback in case we decide to fetch more gists at once in the future
+
+            const SORT_BY_UPDATED = true; // whether to sort gists by last updated time (most recent first)
+            const SORT_BY_UPDATED_DESCENDING = true; // if sorting by updated time, whether to show most recently updated gists first (if false, shows least recently updated first)
+
+            let gists = typeof json === 'string' ? JSON.parse(json) : json;
+            if (SORT_BY_UPDATED === true) {
+                gists.sort((a, b) => SORT_BY_UPDATED_DESCENDING ? new Date(b.updated_at) - new Date(a.updated_at) : new Date(a.updated_at) - new Date(b.updated_at));
+            }
+
+            gistsGrid.querySelectorAll('fa-card').forEach(c => {
+                //if (!c.hasAttribute('spotlight')) c.remove();
+                c.remove();
+            });
+
+            gists = gists.slice(0, MAX_GISTS);
+            // Render the appropriate entries into our gists grid based on the fetched JSON data
+            gists.forEach(({ description, html_url, url, files }) => {
+                if (!files || Object.keys(files).length === 0) return; // skip gists with no files
+
+                const { filename, language, raw_url, accent = 'blue' } = Object.values(files)[0];
+                const card = document.createElement('fa-card');
+                card.setAttribute('hover', '');
+                card.setAttribute('accent', accent);
+                const cardHeader = document.createElement('div');
+                cardHeader.slot = 'header';
+                cardHeader.style.cssText = 'display:flex; align-items:center; justify-content:space-between;';
+                const cardTitle = document.createElement('fa-h3');
+                cardTitle.textContent = filename || 'Untitled Gist';
+                cardHeader.appendChild(cardTitle);
+                const cardBadge = document.createElement('fa-badge');
+                cardBadge.setAttribute('variant', 'success');
+                cardBadge.textContent = langToShort(language) || 'Other';
+                cardHeader.appendChild(cardBadge);
+                card.appendChild(cardHeader);
+                const cardBody = document.createElement('fa-p');
+                cardBody.textContent = description || `No description provided.`;
+                card.appendChild(cardBody);
+                if (raw_url) {
+                    card.dataset.source = html_url || url || raw_url; // prefer linking to the gist page rather than the raw file
+                    card.addEventListener('click', () => { 
+                        card.dataset.source && window.open(card.dataset.source, "_blank") 
+                    });
+                }
+                gistsGrid.appendChild(card);
+            });
+        }
+
+        const DONT_FETCH_GISTS_AUTO = true;
+        const gistsCacheKey = "cachedGists";
+        const cachedGistsJson = recall(gistsCacheKey);
+        if (cachedGistsJson) {
+            renderGists(cachedGistsJson);
+        }
+        else {
+            if (DONT_FETCH_GISTS_AUTO === false) {
+                try {
+                    fetchGists().then(json => {
+                        remember(gistsCacheKey, JSON.stringify(json));
+                        renderGists(json);
+                    });
+                } catch (err) {
+                    console.error("Error fetching gists:", err);
+                    remember(gistsCacheKey, JSON.stringify([]));
+                }
+            }
+        }
+        gists.appendChild(gistsGrid);
+        main.appendChild(gists);
+
+        if (cachedGistsJson || (DONT_FETCH_GISTS_AUTO === true)) {
+            const clearCacheGistBtn = document.createElement('fa-button');
+            clearCacheGistBtn.setAttribute('variant', 'warning');
+            clearCacheGistBtn.setAttribute('size', 'sm');
+            const btnText = cachedGistsJson ? 'Clear Cache & Update Gists' : 'Update Gists';
+            clearCacheGistBtn.textContent = btnText;
+            clearCacheGistBtn.style.marginTop = '16px';
+            clearCacheGistBtn.addEventListener('click', () => { alert('not implemented yet'); });
+
+            gists.appendChild(clearCacheGistBtn);
+        }
+
         const projects = document.createElement('fa-section');
         projects.id = 'projects';
         projects.setAttribute('title', 'Some of my projects');
         projects.setAttribute('accent', 'green');
 
-        const grid = document.createElement('div');
-        grid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;';
-
-        const langToShort = (full) => {
-            switch (full) {
-                case "JavaScript": return "JS";
-                case "TypeScript": return "TS";
-                default: return full;
-            }
-        };
+        const projectsGrid = document.createElement('div');
+        projectsGrid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;';
 
         const highlightedProjectData = [
             {
@@ -131,27 +288,39 @@
                 card.addEventListener('click', () => { card.dataset.source && window.open(card.dataset.source, "_blank") });
             }
 
-            grid.appendChild(card);
+            projectsGrid.appendChild(card);
         });
 
         function renderProjects(json) {
             const EXLUDE_ARCHIVED = true; // whether to exclude archived projects from the list
-            const EXPLICIT_IGNORES = [ 'tettedev.github.io', 'TetteDev' ]; // exclude profile repo and website repo
+            const EXPLICIT_REPO_NAME_EXCLUDES = [ /* 'tettedev.github.io', */ 'TetteDev' ]; // exclude profile repo and website repo
+            
+            const MAX_PROJECTS = 9999; // maximum number of projects to display (after filtering and sorting)
 
-            const ORDER_BY_UPDATED = false; // whether to order projects by last updated time (most recent first) instead of stargazer count
-            const ORDER_BY_STARS = true; // whether to order projects by stargazer count (most stars first)
+            const ORDER_BY_UPDATED = true; // whether to order projects by last updated time (most recent first)
+            const ORDER_BY_UPDATED_DESCENDING = true; // if ordering by updated time, whether to show most recently updated projects first (if false, shows least recently updated first)
 
-            const repos = typeof json === 'string' ? JSON.parse(json) : json;
+            const ORDER_BY_STARS = false; // whether to order projects by stargazer count (most stars first)
+            const ORDER_BY_STARS_DESCENDING = true; // if ordering by stars, whether to show projects with most stars first (if false, shows projects with least stars first)
+
+            const ORDER_BY_WATCHERS = false; // whether to order projects by watcher count (most watchers first)
+            const ORDER_BY_WATCHERS_DESCENDING = true; // if ordering by watchers, whether to show projects with most watchers first (if false, shows projects with least watchers first)
+
+            let repos = typeof json === 'string' ? JSON.parse(json) : json;
             if (ORDER_BY_UPDATED === true) {
-                repos.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+                repos.sort((a, b) => ORDER_BY_UPDATED_DESCENDING ? new Date(b.updated_at) - new Date(a.updated_at) : new Date(a.updated_at) - new Date(b.updated_at));
             } else if (ORDER_BY_STARS === true) {
-                repos.sort((a, b) => b.stargazers_count - a.stargazers_count);
+                repos.sort((a, b) => ORDER_BY_STARS_DESCENDING ? b.stargazers_count - a.stargazers_count : a.stargazers_count - b.stargazers_count);
+            } else if (ORDER_BY_WATCHERS === true) {
+                repos.sort((a, b) => ORDER_BY_WATCHERS_DESCENDING ? b.watchers_count - a.watchers_count : a.watchers_count - b.watchers_count);
             }
 
-            grid.querySelectorAll('fa-card').forEach(c => {
+            // clear existing non-spotlight cards just in case
+            projectsGrid.querySelectorAll('fa-card').forEach(c => {
                 if (!c.hasAttribute('spotlight')) c.remove();
             });
 
+            repos = repos.slice(0, MAX_PROJECTS);
             for (const repoData of repos) {
                 if (EXLUDE_ARCHIVED && repoData.archived) continue;
 
@@ -167,7 +336,7 @@
                     stars: stargazers_count,
                 };
 
-                if (EXPLICIT_IGNORES.includes(name)) continue;
+                if (EXPLICIT_REPO_NAME_EXCLUDES.includes(name)) continue;
 
                 const card = document.createElement('fa-card');
                 card.setAttribute('hover', '');
@@ -196,7 +365,7 @@
                     card.addEventListener('click', () => {card.dataset.source && window.open(card.dataset.source, "_blank")});
                 }
 
-                grid.appendChild(card);
+                projectsGrid.appendChild(card);
             }
         }
         async function fetchProjects() {
@@ -214,7 +383,7 @@
         
         const DONT_FETCH_REPOS_AUTO = true;
         const repoCacheKey = "cachedRepos";
-        const cachedRepoJson = localStorage.getItem(repoCacheKey);
+        const cachedRepoJson = recall(repoCacheKey);
         if (cachedRepoJson) {
             renderProjects(cachedRepoJson);
         } 
@@ -222,40 +391,57 @@
             if (DONT_FETCH_REPOS_AUTO === false) {
                 try {
                     fetchProjects().then(json => {
-                        localStorage.setItem(repoCacheKey, JSON.stringify(json));
+                        remember(repoCacheKey, JSON.stringify(json));
                         renderProjects(json);
                     });
                 } catch (err) {
                     console.error("Error fetching repositories:", err);
-                    localStorage.setItem(repoCacheKey, JSON.stringify([]));
+                    remember(repoCacheKey, JSON.stringify([]));
                 }
             }
         }
 
-        projects.appendChild(grid);
+        projects.appendChild(projectsGrid);
         main.appendChild(projects);
 
         if (cachedRepoJson || (DONT_FETCH_REPOS_AUTO === true)) {
             const clearCacheBtn = document.createElement('fa-button');
             clearCacheBtn.setAttribute('variant', 'warning');
             clearCacheBtn.setAttribute('size', 'sm');
-            clearCacheBtn.textContent = cachedRepoJson ? 'Invalidate Repository Cache' : 'Fetch Repositories';
+            const btnText = cachedRepoJson ? 'Clear Cache & Update Repositories' : 'Update Repositories';
+            clearCacheBtn.textContent = btnText;
             clearCacheBtn.style.marginTop = '16px';
             clearCacheBtn.addEventListener('click', () => {
-                const confirmClear = confirm("You are about to make one (1) request to the public GitHub API. Data will be cached for future visits but there is still a chance you can get rate limited if you click this button multiple times. Do you want to proceed?");
+                const seconds = 61;
+                const cooldownTimeMs = seconds * 1000;
+                
+                const confirmClear = confirm("You are about to make one (1) request to the public GitHub API (https://api.github.com/users/TetteDev/repos). Do you want to continue?");
                 if (confirmClear) {
-                    const backup = localStorage.getItem(repoCacheKey);
+                    const backup = recall(repoCacheKey);
                     try {
-                        localStorage.removeItem(repoCacheKey);
+                        // TODO: we need to implement a Forget function
+                        forget(repoCacheKey);
                         fetchProjects().then(json => {
-                            localStorage.setItem(repoCacheKey, JSON.stringify(json));
+                            remember(repoCacheKey, JSON.stringify(json));
                             renderProjects(json);
                         });
                     } catch (err) {
-                        console.error("Error clearing cache:", err);
-                        if (backup) localStorage.setItem(repoCacheKey, backup);
+                        console.warn("Error fetching repositories:", err);
+                        if (backup) remember(repoCacheKey, backup);
+                    } finally {
+                        clearCacheBtn.setAttribute('disabled', '');
+                        clearCacheBtn.textContent = `Please wait ${seconds-1} seconds before clicking again...`;
+
+                        let secondsLeft = seconds;
+                        let intervalId = setInterval(() => { 
+                            if (clearCacheBtn.hasAttribute('disabled') === false || secondsLeft === 0) {
+                                clearInterval(intervalId);
+                                return;
+                            }
+                            clearCacheBtn.textContent = `Please wait ${--secondsLeft} second(s) before clicking again...`; }, 
+                            Math.ceil(cooldownTimeMs / (seconds - 1))); // only to have our button show 'Any second now...' for atleast 1 second
+                        setTimeout(() => { clearCacheBtn.textContent = btnText; clearCacheBtn.removeAttribute('disabled'); }, cooldownTimeMs);
                     }
-                    
                 }
             });
 
@@ -290,8 +476,9 @@
 
         const puzzlesFiles = [
             { name: "Puzzle 1", path: "assets/fun/puzzle1/index.html", description: "Can you find the super secret code?" },
-            { name: "Puzzle 2", path: "" },
         ];
+
+        const shownBigPuzzlesCount = 4;
         if (puzzlesFiles.length > 0) {
             didYouKnowCard.style.marginBottom = '24px';
 
@@ -299,7 +486,8 @@
             puzzleGrid.style.cssText = 'display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px;';
             const tidyName = (input, fallbackIdx) => input || (fallbackIdx !== undefined ? `Puzzle ${fallbackIdx + 1}` : "Untitled Puzzle");
 
-            puzzlesFiles.forEach(({ name, path = '', description = 'No description available', difficulty = 'Puzzle' }, idx) => {
+            const slice = puzzlesFiles.slice(0, shownBigPuzzlesCount); // limit to first 50 puzzles to avoid overwhelming the user
+            slice.forEach(({ name, path = '', description = 'No description available', difficulty = 'Puzzle' }, idx) => {
                 const puzzleCard = document.createElement('fa-card');
                 puzzleCard.setAttribute('hover', '');
                 puzzleCard.setAttribute('accent', 'green');
@@ -328,6 +516,38 @@
             });
 
             didYouKnow.appendChild(puzzleGrid);
+
+            const remainingPuzzles = puzzlesFiles.slice(slice.length);
+            if (remainingPuzzles.length > 0) {
+                puzzleGrid.style.marginBottom = '24px';
+
+                const remainingPuzzleContainer = document.createElement('div');
+                remainingPuzzleContainer.className = 'grid grid-2';
+                remainingPuzzleContainer.style.cssText = "margin-bottom: 48px;";
+
+                const ul = document.createElement('fa-ul');
+                ul.setAttribute('variant', 'glass');
+                ul.setAttribute('bullet', 'orb');
+                ul.setAttribute('color', 'blue');
+                ul.style.cssText = 'max-height: 400px; overflow-y: auto;';
+                remainingPuzzleContainer.appendChild(ul);
+
+                const remainingPuzzles = puzzlesFiles.slice(slice.length);
+                remainingPuzzles.forEach(({ name, path = '', description = 'No description available', difficulty = 'Puzzle' }, idx) => {
+                    const li = document.createElement('fa-li');
+                    li.textContent = tidyName(name, idx);
+                    li.style.width = '100%';
+    
+                    li.style.cursor = 'pointer';
+                    li.addEventListener('mouseover', () => { li.style.textDecoration = 'underline'; });
+                    li.addEventListener('mouseout', () => { li.style.textDecoration = 'none'; });
+                    if (path && path.trim() !== "") li.addEventListener('click', () => { window.open(path, "_blank"); })
+
+                    ul.appendChild(li);
+                });
+                
+                didYouKnow.appendChild(remainingPuzzleContainer);
+            }
         }
 
         main.appendChild(about);
@@ -348,8 +568,14 @@
         // Clear whatever puzzle related elements are still present in the DOM just in case
         document.querySelectorAll('.stage1').forEach(el => { el.remove(); });
 
-        /* JS_PARSER.PY - OMITTED DEBUG CODE */
+        // // Our custom FA components have already been defined and fully registered
+        // // so we dont really need the script tags any more
+        // document.querySelectorAll('script[src*="assets/js/fa-"]').forEach(s => s.remove());
 
+        // // Optional: same goes for our FA stylesheet, gotta be sure though its been cached
+        //document.querySelectorAll('link[href*="assets/css/fa-"]').forEach(s => s.remove());
+
+        // Fixes small chance of our loadding message and loader still being visible after the website has loaded
         setTimeout(() => {
             document.getElementById("message")?.remove();
             document.getElementById("loader")?.remove();
