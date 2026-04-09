@@ -85,6 +85,11 @@ button:disabled { background: #252525; color: #555; cursor: default; }
   width: 0%;
   transition: width 0.15s;
 }
+a {
+  color: #4a7cf5;
+  text-decoration: none;
+  transition: color 0.15s;
+}
 a.download-btn {
   display: inline-block;
   background: #2e7d32;

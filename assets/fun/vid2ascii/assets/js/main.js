@@ -11,7 +11,7 @@ function isFontAvailable(name) {
   const fallbackW = ctx.measureText(testStr).width;
   ctx.font        = `12px "${name}", monospace`;
   return ctx.measureText(testStr).width !== fallbackW;
-};
+}
 
 fontFamilyInput.addEventListener('input', () => {
   const name = fontFamilyInput.value.trim();
