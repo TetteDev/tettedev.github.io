@@ -20,7 +20,6 @@ fontFamilyInput.addEventListener('input', () => {
   fontIndicator.className   = `font-indicator ${ok ? 'font-ok' : 'font-err'}`;
 });
 
-// ── DOM ───────────────────────────────────────────────────────────────────────
 const dropZone     = document.getElementById('dropZone');
 const dropLabel    = document.getElementById('dropLabel');
 const fileInput    = document.getElementById('fileInput');
@@ -39,7 +38,6 @@ let abortRequested = false;
 
 abortBtn.addEventListener('click', () => { abortRequested = true; });
 
-// ── File selection ────────────────────────────────────────────────────────────
 dropZone.addEventListener('click', () => fileInput.click());
 fileInput.addEventListener('change', e => { if (e.target.files[0]) selectFile(e.target.files[0]); });
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
@@ -76,7 +74,7 @@ function probeFps(file) {
   vid.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;';
   document.body.appendChild(vid);
 
-  const FPS_PROBE_SAMPLES = 30;
+  const FPS_PROBE_SAMPLES = 16;
   const times   = [];
 
   function onFrame(now, metadata) {
@@ -110,12 +108,11 @@ function probeFps(file) {
   }, { once: true });
 }
 
-// ── Build per-character alpha mask LUT ───────────────────────────────────────
-// Returns Float32Array of shape [nChars][ch][cw], plus measured cw/ch.
+// build per-character alpha mask LUT 
 function buildCharMaskLUT(fontSize, fontFamily, asciiChars) {
   const fontStr = `${fontSize}px "${fontFamily}", Courier, monospace`;
 
-  // Measure char cell dimensions
+  // measure char cell dimensions
   const probe = new OffscreenCanvas(64, 64);
   const pctx  = probe.getContext('2d');
   pctx.font   = fontStr;
@@ -146,9 +143,6 @@ function buildCharMaskLUT(fontSize, fontFamily, asciiChars) {
   return { lut, cw, ch };
 }
 
-// ── ASCII frame renderer ──────────────────────────────────────────────────────
-// Reads srcCtx (already scaled to asciiW×asciiH), writes to outCtx.
-// Uses ImageData typed-array math — no per-char fillText calls.
 function renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo) {
   const { lut, cw, ch } = charInfo;
   const nChars = asciiChars.length;
@@ -202,7 +196,6 @@ function renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo) {
   outCtx.putImageData(outImg, 0, 0);
 }
 
-// ── Main conversion ───────────────────────────────────────────────────────────
 convertBtn.addEventListener('click', async () => {
   if (!selectedFile) return;
   convertBtn.disabled  = true;
@@ -253,7 +246,6 @@ convertBtn.addEventListener('click', async () => {
   convertBtn.disabled = false;
 });
 
-// ── Image conversion ─────────────────────────────────────────────────────────
 async function convertImage(file, settings) {
   const { asciiWidth, fontSize, fontFamily, asciiChars, grayscale } = settings;
 
@@ -304,7 +296,6 @@ async function convertImage(file, settings) {
   statusText.textContent = 'Done!';
 }
 
-// ── Output player ────────────────────────────────────────────────────────────
 function formatTime(s) {
   const m = Math.floor(s / 60);
   const ss = Math.floor(s % 60).toString().padStart(2, '0');
@@ -361,7 +352,6 @@ function showPlayer(blobUrl) {
     muteBtn.innerHTML = vid.muted ? '&#128263;' : '&#128264;';
   };
 
-  // Seek bar — click and drag
   let seeking = false;
   function applySeek(e) {
     const rect = seekWrap.getBoundingClientRect();
@@ -388,15 +378,13 @@ function showPlayer(blobUrl) {
 async function runConversion(file, settings) {
   const { asciiWidth, fontSize, fontFamily, asciiChars, grayscale, keepAudio, outputFps } = settings;
 
-  // Build LUT (once per conversion — recomputed if font/chars changed)
+  // precompute LUT 
   statusText.textContent = 'Building font masks…';
   const charInfo = buildCharMaskLUT(fontSize, fontFamily, asciiChars);
   const { cw, ch } = charInfo;
 
-  // Aspect correction: char cells are taller than wide, so we scale height down accordingly
   const aspectCorrection = cw / ch;
 
-  // Create and load the video element
   const video         = document.createElement('video');
   video.src           = URL.createObjectURL(file);
   video.muted         = true;   // silences local output; captureStream() still carries audio
@@ -415,21 +403,19 @@ async function runConversion(file, settings) {
   const outW   = asciiWidth * cw;
   const outH   = asciiH    * ch;
 
-  // Source canvas: small, pixel-sampled per frame
   const srcCanvas = new OffscreenCanvas(asciiWidth, asciiH);
   const srcCtx    = srcCanvas.getContext('2d', { willReadFrequently: true });
 
-  // Output canvas: full resolution ASCII render (also shown as preview)
   previewCanvas.width  = outW;
   previewCanvas.height = outH;
   previewPanel.style.display = 'block';
   const outCtx = previewCanvas.getContext('2d');
 
-  // Determine supported MIME type
+  // determine the supported mime types
   const mimeType = ['video/webm;codecs=vp9', 'video/webm;codecs=vp8', 'video/webm']
     .find(t => MediaRecorder.isTypeSupported(t)) || 'video/webm';
 
-  // Build the MediaRecorder stream: canvas video + optional audio
+  // 0 means we manually request frames
   const canvasStream = previewCanvas.captureStream(0); // 0 = we call requestFrame() manually
 
   if (keepAudio) {
@@ -457,7 +443,7 @@ async function runConversion(file, settings) {
   const chunks   = [];
   recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
 
-  // Check for requestVideoFrameCallback support
+  // shouldn't be needed but whatever
   if (!('requestVideoFrameCallback' in HTMLVideoElement.prototype)) {
     video.remove();
     throw new Error('Your browser does not support requestVideoFrameCallback. Please use Chrome or Edge.');
@@ -467,12 +453,24 @@ async function runConversion(file, settings) {
   video.play();
   statusText.textContent = 'Converting…';
 
-  await new Promise(resolve => {
+  await new Promise((resolve, reject) => {
     const canvasVideoTrack = canvasStream.getVideoTracks()[0];
     const minFrameInterval = outputFps ? 1 / outputFps : 0;
     let lastCapturedTime   = -Infinity;
+    let settled            = false;
+
+    function finish() {
+      if (settled) return;
+      settled = true;
+      recorder.stop();
+      resolve();
+    }
+
+    video.addEventListener('ended', finish, { once: true });
 
     function onFrame(now, metadata) {
+      if (settled) return;
+
       const mediaTime = metadata.mediaTime;
       const elapsed   = mediaTime - lastCapturedTime;
 
@@ -492,21 +490,21 @@ async function runConversion(file, settings) {
 
       const done = video.ended || (video.duration > 0 && video.currentTime >= video.duration - 0.05);
       if (abortRequested) {
+        settled = true;
         recorder.stop();
         reject(new Error('aborted'));
         // TODO: reset everything to allow new conversion without page reload
       } else if (!done) {
         video.requestVideoFrameCallback(onFrame);
       } else {
-        recorder.stop();
-        resolve();
+        finish();
       }
     }
 
     video.requestVideoFrameCallback(onFrame);
   });
 
-  // Wait for recorder to flush
+  // flush remaining data and finalize the blob
   await new Promise(r => recorder.addEventListener('stop', r, { once: true }));
 
   URL.revokeObjectURL(video.src);
