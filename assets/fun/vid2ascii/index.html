@@ -33,7 +33,7 @@
         <input type="text" id="fontFamily" value="Courier New" style="flex:1">
         <span id="fontIndicator" class="font-indicator font-ok">&#10003;</span>
       </div>
-      <div class="hint"><b>Must be a monospace font</b> installed on your system. Here are <a href="https://ezascii.com/blog/best-fonts-for-unicode-and-ascii-art" target="_blank" rel="noopener noreferrer">some good fonts</a>.</div>
+      <div class="hint"><b>Preferably a monospace font</b>, but any font can be used. Here are <a href="https://ezascii.com/blog/best-fonts-for-unicode-and-ascii-art" target="_blank" rel="noopener noreferrer">some good fonts</a>.</div>
     </div>
 
     <div class="field">
@@ -50,12 +50,17 @@
 
     <div class="field toggle">
       <input type="checkbox" id="grayscale">
-      <label for="grayscale">Grayscale output</label>
+      <label for="grayscale">Black & White output</label>
     </div>
 
     <div class="field toggle">
       <input type="checkbox" id="keepAudio" checked>
       <label for="keepAudio">Keep audio</label>
+    </div>
+
+    <div class="field toggle">
+      <input type="checkbox" id="useWorkers">
+      <label for="useWorkers" title="VERY EXPERIMENTAL">Use Web Workers</label>
     </div>
 
     <div class="field">
@@ -78,7 +83,7 @@
   </div>
   <div id="downloadArea"></div>
   <div class="warning" id="audioWarning" style="display:none">
-    Audio capture depends on browser support. If the output has no audio, try Chrome/Edge.
+    Audio capture depends on browser support. If you are experiencing issues with audio, try using another webbrowser.
   </div>
 </div>
 
@@ -110,5 +115,9 @@
 </div>
 
 <script src="assets/js/main.js"></script>
+
+<footer class="site-footer">
+  Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color: #4a7cf5">TetteDev</a>
+</footer>
 </body>
 </html>

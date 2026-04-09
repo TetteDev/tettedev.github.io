@@ -1,5 +1,24 @@
 "use strict";
 
+function indicateError(message) {
+  const statusElement = document.getElementById('statusText');
+  if (statusElement) {
+    statusElement.classList.add('error');
+    statusElement.textContent = `Error: ${message}`;
+  }
+}
+
+window.onerror = function (message, source, lineno, colno, error) {
+  indicateError(error?.message || message);
+  debugger;
+};
+window.addEventListener('unhandledrejection', e => {
+  indicateError(e.reason?.message || String(e.reason));
+  debugger;
+});
+
+const preferedFonts = ['Dejavu Sans Mono', 'Consolas', 'Courier New'];
+const fallbackFont = 'Courier New';
 const fontFamilyInput = document.getElementById('fontFamily');
 const fontIndicator   = document.getElementById('fontIndicator');
 
@@ -12,13 +31,37 @@ function isFontAvailable(name) {
   ctx.font        = `12px "${name}", monospace`;
   return ctx.measureText(testStr).width !== fallbackW;
 }
+function isFontMonospace(name) {
+  const canvas = new OffscreenCanvas(200, 20);
+  const ctx    = canvas.getContext('2d');
+  ctx.font = `12px "${name}", monospace`;
+  return ctx.measureText('i').width === ctx.measureText('W').width;
+}
 
 fontFamilyInput.addEventListener('input', () => {
-  const name = fontFamilyInput.value.trim();
-  const ok   = name.length > 0 && isFontAvailable(name);
-  fontIndicator.textContent = ok ? '\u2713' : '\u2717';
-  fontIndicator.className   = `font-indicator ${ok ? 'font-ok' : 'font-err'}`;
+  const name      = fontFamilyInput.value.trim();
+  const available = name.length > 0 && isFontAvailable(name);
+  const mono      = available && isFontMonospace(name);
+
+  if (mono) {
+    fontIndicator.textContent = '\u2713';
+    fontIndicator.className   = 'font-indicator font-ok';
+  } else if (available) {
+    fontIndicator.textContent = '\u26a0\ufe0f';
+    fontIndicator.className   = 'font-indicator font-warn';
+  } else {
+    fontIndicator.textContent = '\u2717';
+    fontIndicator.className   = 'font-indicator font-err';
+  }
 });
+
+(function initFontFamily() {
+  const best = preferedFonts.find(f => isFontAvailable(f) && isFontMonospace(f));
+  if (best) {
+    fontFamilyInput.value = best;
+    fontFamilyInput.dispatchEvent(new Event('input'));
+  }
+})();
 
 const dropZone     = document.getElementById('dropZone');
 const dropLabel    = document.getElementById('dropLabel');
@@ -140,7 +183,7 @@ function buildCharMaskLUT(fontSize, fontFamily, asciiChars) {
     }
   }
 
-  return { lut, cw, ch };
+  return { lut, cw, ch, nChars: n };
 }
 
 function renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo) {
@@ -196,7 +239,60 @@ function renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo) {
   outCtx.putImageData(outImg, 0, 0);
 }
 
+function createWorkerPool(charInfo, n) {
+  const { lut, cw, ch, nChars } = charInfo;
+  const workers = [];
+  for (let i = 0; i < n; i++) {
+    const w = new Worker('assets/js/render-worker.js');
+    w.postMessage({ type: 'init', lut, cw, ch, nChars });
+    workers.push(w);
+  }
+  return workers;
+}
+
+async function renderAsciiFrameWorkers(srcCtx, outCtx, grayscale, asciiChars, charInfo, workerPool) {
+  const { cw, ch, nChars } = charInfo;
+  const scale = (nChars - 1) / 255;
+  const sw    = srcCtx.canvas.width;
+  const sh    = srcCtx.canvas.height;
+  const ow    = sw * cw;
+  const oh    = sh * ch;
+  const n     = workerPool.length;
+
+  const srcPx        = srcCtx.getImageData(0, 0, sw, sh).data;
+  const rowsPerWorker = Math.ceil(sh / n);
+
+  const promises = [];
+  for (let i = 0; i < n; i++) {
+    const startRow  = i * rowsPerWorker;
+    if (startRow >= sh) break;
+    const endRow    = Math.min(startRow + rowsPerWorker, sh);
+    const stripRows = endRow - startRow;
+    const srcSlice  = srcPx.slice(startRow * sw * 4, endRow * sw * 4);
+    const worker    = workerPool[i];
+    promises.push(new Promise(resolve => {
+      worker.onmessage = e => resolve(e.data);
+      worker.postMessage(
+        { type: 'render', srcStrip: srcSlice.buffer, sw, stripRows, startRow, ow, scale, grayscale },
+        [srcSlice.buffer]
+      );
+    }));
+  }
+
+  const results = await Promise.all(promises);
+
+  const outImg = outCtx.createImageData(ow, oh);
+  const out    = outImg.data;
+  for (let i = 3; i < out.length; i += 4) out[i] = 255;
+  for (const { startRow, outStrip } of results) {
+    out.set(new Uint8ClampedArray(outStrip), startRow * ch * ow * 4);
+  }
+  outCtx.putImageData(outImg, 0, 0);
+}
+
 convertBtn.addEventListener('click', async () => {
+  document.getElementById('statusText')?.classList.remove('error');
+
   if (!selectedFile) return;
   convertBtn.disabled  = true;
   abortBtn.style.display = 'inline-block';
@@ -212,9 +308,10 @@ convertBtn.addEventListener('click', async () => {
     fontSize   : Math.max(6, parseInt(document.getElementById('fontSize').value)   || 10),
     fontFamily : document.getElementById('fontFamily').value.trim() || 'Courier New',
     asciiChars : document.getElementById('asciiChars').value || ' .:-=+*#%@',
-    grayscale  : document.getElementById('grayscale').checked,
-    keepAudio  : document.getElementById('keepAudio').checked,
-    outputFps  : parseInt(document.getElementById('outputFps').value) || null,
+    grayscale   : document.getElementById('grayscale').checked,
+    keepAudio   : document.getElementById('keepAudio').checked,
+    useWorkers  : document.getElementById('useWorkers').checked,
+    outputFps   : parseInt(document.getElementById('outputFps').value) || null,
   };
   settings.asciiChars = settings.asciiChars.split('').reverse().join('');
 
@@ -237,7 +334,7 @@ convertBtn.addEventListener('click', async () => {
     if (err.message === 'aborted') {
       statusText.textContent = 'Conversion aborted.';
     } else {
-      statusText.textContent = `Error: ${err.message}`;
+      indicateError(err.message);
       console.error(err);
     }
   }
@@ -280,7 +377,13 @@ async function convertImage(file, settings) {
   const outCtx = previewCanvas.getContext('2d');
 
   statusText.textContent = 'Rendering…';
-  renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo);
+  if (settings.useWorkers) {
+    const imgWorkerPool = createWorkerPool(charInfo, Math.max(2, Math.min(navigator.hardwareConcurrency || 4, 16)));
+    await renderAsciiFrameWorkers(srcCtx, outCtx, grayscale, asciiChars, charInfo, imgWorkerPool);
+    imgWorkerPool.forEach(w => w.terminate());
+  } else {
+    renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo);
+  }
 
   progressFill.style.width = '100%';
 
@@ -376,7 +479,7 @@ function showPlayer(blobUrl) {
 }
 
 async function runConversion(file, settings) {
-  const { asciiWidth, fontSize, fontFamily, asciiChars, grayscale, keepAudio, outputFps } = settings;
+  const { asciiWidth, fontSize, fontFamily, asciiChars, grayscale, keepAudio, useWorkers, outputFps } = settings;
 
   // precompute LUT 
   statusText.textContent = 'Building font masks…';
@@ -384,10 +487,12 @@ async function runConversion(file, settings) {
   const { cw, ch } = charInfo;
 
   const aspectCorrection = cw / ch;
+  const workerPool = useWorkers
+    ? createWorkerPool(charInfo, Math.max(2, Math.min(navigator.hardwareConcurrency || 4, 16)))
+    : null;
 
   const video         = document.createElement('video');
   video.src           = URL.createObjectURL(file);
-  video.muted         = true;   // silences local output; captureStream() still carries audio
   video.playsInline   = true;
   video.style.cssText = 'position:fixed;opacity:0;pointer-events:none;width:1px;height:1px;top:0;left:0;';
   document.body.appendChild(video);
@@ -408,7 +513,9 @@ async function runConversion(file, settings) {
 
   previewCanvas.width  = outW;
   previewCanvas.height = outH;
-  previewPanel.style.display = 'block';
+  previewPanel.style.display  = 'block';
+  previewCanvas.style.display = 'block';
+  document.getElementById('playerWrap').style.display = 'none';
   const outCtx = previewCanvas.getContext('2d');
 
   // determine the supported mime types
@@ -432,6 +539,8 @@ async function runConversion(file, settings) {
       audioWarning.style.display = 'block';
     }
   }
+
+  video.muted = true; // mute after captureStream() so the audio track is included
 
   const videoBitsPerSecond = 16_000_000;
   const audioBitsPerSecond = keepAudio ? 192_000 : 0;
@@ -468,7 +577,7 @@ async function runConversion(file, settings) {
 
     video.addEventListener('ended', finish, { once: true });
 
-    function onFrame(now, metadata) {
+    async function onFrame(now, metadata) {
       if (settled) return;
 
       const mediaTime = metadata.mediaTime;
@@ -477,12 +586,18 @@ async function runConversion(file, settings) {
       if (elapsed >= minFrameInterval) {
         lastCapturedTime = mediaTime;
         srcCtx.drawImage(video, 0, 0, asciiWidth, asciiH);
-        renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo);
+        if (useWorkers) {
+          await renderAsciiFrameWorkers(srcCtx, outCtx, grayscale, asciiChars, charInfo, workerPool);
+        } else {
+          renderAsciiFrame(srcCtx, outCtx, grayscale, asciiChars, charInfo);
+        }
 
         if (canvasVideoTrack && canvasVideoTrack.requestFrame) {
           canvasVideoTrack.requestFrame();
         }
       }
+
+      if (settled) return;
 
       const progress = video.duration > 0 ? video.currentTime / video.duration : 0;
       progressFill.style.width   = `${Math.round(progress * 100)}%`;
@@ -491,9 +606,9 @@ async function runConversion(file, settings) {
       const done = video.ended || (video.duration > 0 && video.currentTime >= video.duration - 0.05);
       if (abortRequested) {
         settled = true;
+        if (workerPool) workerPool.forEach(w => w.terminate());
         recorder.stop();
         reject(new Error('aborted'));
-        // TODO: reset everything to allow new conversion without page reload
       } else if (!done) {
         video.requestVideoFrameCallback(onFrame);
       } else {
@@ -507,6 +622,7 @@ async function runConversion(file, settings) {
   // flush remaining data and finalize the blob
   await new Promise(r => recorder.addEventListener('stop', r, { once: true }));
 
+  if (workerPool) workerPool.forEach(w => w.terminate());
   URL.revokeObjectURL(video.src);
   video.remove();
 
