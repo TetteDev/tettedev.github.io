@@ -36,6 +36,7 @@
       <div class="hint"><b>Preferably a monospace font</b>, but any font can be used. Here are <a href="https://ezascii.com/blog/best-fonts-for-unicode-and-ascii-art" target="_blank" rel="noopener noreferrer">some good fonts</a>.</div>
     </div>
 
+    <!-- estimated video output width: letter width (measured character width from selected font) * asciiWidth (characters per line) -->
     <div class="field">
       <label for="fontSize">Font Size (px)</label>
       <input type="number" id="fontSize" value="10" min="6" max="32">
@@ -114,10 +115,27 @@
   </div>
 </div>
 
+<div class="panel" id="videoComparePanel" style="margin-bottom: 32px;">
+  <div class="panel-title">Examples</div>
+  <div style="display:flex;flex-direction:column;align-items:center;min-height:400px;">
+    <div style="position:relative;width:640px;height:360px;background:#222;overflow:hidden;border-radius:8px;box-shadow:0 2px 8px #0002;">
+      <button id="rightVideoCycleBtn" style="position:absolute;top:12px;right:16px;z-index:10;background:rgba(34,34,34,0.85);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:#fff;outline:none;box-shadow:0 1px 4px #0006;transition:background 0.2s;">
+        <span>&#8635;</span>
+      </button>
+      <video id="videoLeft" src="assets/media/pre.mp4" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;" preload="metadata" muted loop></video>
+      <video id="videoRight" src="assets/media/post.mp4" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:2;clip-path:inset(0 0 0 50%);" preload="metadata" muted loop></video>
+      <div id="sliderHandle" style="position:absolute;top:0;left:50%;width:4px;height:100%;background:var(--accent-color);z-index:3;cursor:ew-resize;box-shadow:0 0 8px #0008;"></div>
+    </div>
+  </div>
+</div>
+
 <script src="assets/js/main.js"></script>
+<script src="assets/js/video-compare.js"></script>
+<script src="assets/js/video-compare-cycle.js"></script>
+<script src="assets/js/video-compare-switch.js"></script>
 
 <footer class="site-footer">
-  Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color: #4a7cf5">TetteDev</a>
+  Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color)">TetteDev</a>
 </footer>
 </body>
 </html>
