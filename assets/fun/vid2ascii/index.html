@@ -8,12 +8,20 @@
 </head>
 <body>
 
-<h1>Image/Video to ASCII Converter</h1>
+<h1>Image/Video to <span style="font-family:'DejaVu Sans Mono', monospace;">ASCII</span> Converter</h1>
 
 <div class="panel">
   <div class="drop-zone" id="dropZone">
     <div id="dropLabel">Drop a video/image file here, or click to select</div>
     <input type="file" id="fileInput" accept="video/*,image/*" style="display:none">
+  </div>
+
+  <div class="field" disabled>
+    <label for="urlInput" style="text-align:center;margin-top:8px;font-weight:bold;">Or enter a video/image URL:</label>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <input type="text" id="urlInput" placeholder="https://example.com/video.mp4" style="flex:1">
+      <button id="loadUrlBtn">Load</button>
+    </div>
   </div>
 </div>
 
@@ -36,7 +44,6 @@
       <div class="hint"><b>Preferably a monospace font</b>, but any font can be used. Here are <a href="https://ezascii.com/blog/best-fonts-for-unicode-and-ascii-art" target="_blank" rel="noopener noreferrer">some good fonts</a>.</div>
     </div>
 
-    <!-- estimated video output width: letter width (measured character width from selected font) * asciiWidth (characters per line) -->
     <div class="field">
       <label for="fontSize">Font Size (px)</label>
       <input type="number" id="fontSize" value="10" min="6" max="32">
@@ -51,17 +58,17 @@
 
     <div class="field toggle">
       <input type="checkbox" id="grayscale">
-      <label for="grayscale">Black & White output</label>
+      <label for="grayscale" title="If unchecked, colors for each character will be sampled from the original and applied to the ASCII output.">Black & White output</label>
     </div>
 
     <div class="field toggle">
       <input type="checkbox" id="keepAudio" checked>
-      <label for="keepAudio">Keep audio</label>
+      <label for="keepAudio" title="Includes the original audio in the output.">Keep audio</label>
     </div>
 
     <div class="field toggle">
       <input type="checkbox" id="useWorkers">
-      <label for="useWorkers" title="VERY EXPERIMENTAL">Use Web Workers</label>
+      <label for="useWorkers" title="Enables work in progress usage of Web Workers which might or might not improve performance.">Use Web Workers</label>
     </div>
 
     <div class="field">
@@ -69,7 +76,6 @@
       <input type="number" id="outputFps" placeholder="Same as source" min="1" max="120">
       <div class="hint">Leave empty to match the source video's FPS.</div>
     </div>
-
   </div>
 </div>
 
@@ -77,14 +83,14 @@
   <div class="actions">
     <button id="convertBtn" disabled>Convert</button>
     <button id="abortBtn" style="display:none;background:#7b2020">Abort</button>
-    <span class="status" id="statusText">Select a video to begin.</span>
+    <span class="status" id="statusText">Select a video/image to begin.</span>
   </div>
   <div class="progress-bar" id="progressBar" style="display:none">
     <div class="progress-fill" id="progressFill"></div>
   </div>
   <div id="downloadArea"></div>
   <div class="warning" id="audioWarning" style="display:none">
-    Audio capture depends on browser support. If you are experiencing issues with audio, try using another webbrowser.
+    Audio capture depends on browser support. If you are experiencing issues with audio, try using another web browser.
   </div>
 </div>
 
@@ -119,21 +125,27 @@
   <div class="panel-title">Examples</div>
   <div style="display:flex;flex-direction:column;align-items:center;min-height:400px;">
     <div style="position:relative;width:640px;height:360px;background:#222;overflow:hidden;border-radius:8px;box-shadow:0 2px 8px #0002;">
-      <button id="rightVideoCycleBtn" style="position:absolute;top:12px;right:16px;z-index:10;background:rgba(34,34,34,0.85);border:none;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:#fff;outline:none;box-shadow:0 1px 4px #0006;transition:background 0.2s;">
+      <button id="rightVideoCycleBtn" style="position:absolute;top:12px;right:16px;z-index:10;background:rgba(34,34,34,0.85);border:none;border-radius:5px;width:32px;height:32px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;color:#fff;outline:none;box-shadow:0 1px 4px #0006;transition:background 0.2s;" title="Switch between two different versions.">
         <span>&#8635;</span>
       </button>
-      <video id="videoLeft" src="assets/media/pre.mp4" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;" preload="metadata" muted loop></video>
-      <video id="videoRight" src="assets/media/post.mp4" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:2;clip-path:inset(0 0 0 50%);" preload="metadata" muted loop></video>
+      <video id="videoLeft" poster="assets/media/pre_poster.png" src="assets/media/pre.mp4" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:1;" preload="metadata" muted loop></video>
+      <video id="videoRight" poster="assets/media/post_poster.png" src="assets/media/post.mp4" style="position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;z-index:2;clip-path:inset(0 0 0 50%);" preload="metadata" muted loop></video>
       <div id="sliderHandle" style="position:absolute;top:0;left:50%;width:4px;height:100%;background:var(--accent-color);z-index:3;cursor:ew-resize;box-shadow:0 0 8px #0008;"></div>
     </div>
   </div>
+  <!-- <div class="videoCompareControls" style="display:flex;align-items:center;gap:12px;">
+    <button id="playPauseBtn" style="width:fit-content;height:auto;padding:4px 8px;">&#x25B6;</button>
+    <input type="range" id="seek" step="1" value="0">
+    <span id="time" style="color:#777">n/a</span>
+  </div> -->
 </div>
 
 <script src="assets/js/main.js"></script>
 <script src="assets/js/video-compare.js"></script>
 
-<footer class="site-footer">
-  Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color)">TetteDev</a>
+<footer class="site-footer" style="font-family:'DejaVu Sans Mono', Consolas, 'Courier New', monospace; text-align:center; color:#555;">
+  <span>Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color)">TetteDev</a></span>
+  <!-- Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color)">TetteDev</a> -->
 </footer>
 </body>
 </html>

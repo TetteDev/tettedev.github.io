@@ -62,8 +62,8 @@ window.addEventListener('DOMContentLoaded', function () {
 
   if (cycleBtn) {
     const rightSources = [
-      {src: 'assets/media/post.mp4', label: 'Original'},
-      {src: 'assets/media/post_alt.mp4', label: 'Alternative'}
+      {src: 'assets/media/post.mp4', label: 'Original', poster: 'assets/media/post_poster.png'},
+      {src: 'assets/media/post_alt.mp4', label: 'Alternative', poster: 'assets/media/post_alt_poster.png'},
     ];
     let current = 0;
 
@@ -73,6 +73,7 @@ window.addEventListener('DOMContentLoaded', function () {
       const currentTime = Math.min(videoLeft.currentTime, videoRight.currentTime);
       const wasPaused = videoLeft.paused;
       videoRight.src = newSrc;
+      videoRight.poster = rightSources[current].poster;
       videoRight.load();
       videoRight.currentTime = currentTime;
       videoLeft.currentTime = currentTime;
@@ -83,9 +84,7 @@ window.addEventListener('DOMContentLoaded', function () {
           videoRight.play().catch(() => {});
         };
       }
-      //cycleBtn.title = 'Switch right video version (' + rightSources[(current+1)%rightSources.length].label + ')';
     });
-    //cycleBtn.title = 'Switch right video version (' + rightSources[1].label + ')';
   }
 
   let leftReady = false, rightReady = false;
@@ -107,5 +106,45 @@ window.addEventListener('DOMContentLoaded', function () {
     rightReady = true;
     trySyncPlay();
   });
+
+  const footer = document.querySelector('.site-footer');
+  if (footer) {
+    footer.addEventListener('mouseenter', () => { footer.innerHTML = '<span>Made badly by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color)">TetteDev</a></span>'; });
+    footer.addEventListener('mouseleave', () => { footer.innerHTML = '<span>Made by <a href="https://github.com/TetteDev" target="_blank" rel="noopener noreferrer" style="color:var(--accent-color)">TetteDev</a></span>'; });
+  }
+
+  const seekBar = document.getElementById('seek');
+  const playPauseBtn = document.getElementById('playPauseBtn');
+  const time = document.getElementById('time');
+  playPauseBtn && playPauseBtn.addEventListener('click', () => {
+    if (videoLeft.paused) {
+      videoLeft.play().catch(() => {});
+      videoRight.play().catch(() => {});
+    } else {
+      videoLeft.pause();
+      videoRight.pause();
+    }
+  });
+  seekBar && seekBar.addEventListener('input', () => {
+    const newTime = seekBar.value;
+    videoLeft.currentTime = newTime;
+    videoRight.currentTime = newTime;
+  });
+  videoLeft.addEventListener('timeupdate', () => {
+    if (seekBar) {
+      if (!seekBar.max) seekBar.max = Math.round(videoLeft.duration);
+      if (!seekBar.min) seekBar.min = 0;
+      if (!seekBar.step) seekBar.step = 1;
+      seekBar.value = Math.round(videoLeft.currentTime);
+    }
+    if (time) {
+      const formatTime = t => {
+        const minutes = Math.floor(t / 60);
+        const seconds = Math.floor(t % 60);
+        return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      };
+      time.textContent = `${formatTime(videoLeft.currentTime)} / ${formatTime(videoLeft.duration)}`;
+    }
+  }, {passive: true});
   requestAnimationFrame(() => setSlider(0.5));
 });

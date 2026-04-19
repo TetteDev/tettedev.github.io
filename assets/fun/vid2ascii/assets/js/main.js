@@ -91,10 +91,91 @@ dropZone.addEventListener('drop', e => {
   if (e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
 });
 
+const loadRemoteButton = document.getElementById('loadUrlBtn');
+loadRemoteButton.addEventListener('click', async () => {
+  async function validateBlob(blob, { allowedTypes = ['image/', 'video/'] } = {}) {
+    const isAllowedType = allowedTypes.some(type => blob.type.startsWith(type));
+    if (!isAllowedType) {
+      throw new Error(`Unsupported file type: ${blob.type}`);
+    }
+
+    const allowedMimeTypeLookup = {
+      'image/jpeg': [0xff, 0xd8, 0xff],
+      'image/png':  [0x89, 0x50, 0x4e, 0x47],
+      'video/mp4':  [0x00, 0x00, 0x00, null, 0x66, 0x74, 0x79, 0x70],
+    };
+    const slice = new Uint8Array(await blob.slice(0, 8).arrayBuffer());
+    const match = Object.entries(allowedMimeTypeLookup).find(([mime, magic]) => {
+      if (!blob.type.startsWith(mime)) return false;
+      return magic.every((byte, idx) => byte === null || slice[idx] === byte);
+    });
+    if (!match) {
+      throw new Error(`File signature does not match expected format for ${blob.type}`);
+    }
+    return true;
+  }
+
+  const urlInput = document.getElementById('urlInput');
+  let url;
+  try {
+    url = new URL(urlInput.value.trim()).href;
+    if (!url) return;
+  } catch (err) {
+    indicateError('Invalid URL format.');
+    return;
+  }
+
+  if (!/^https?:/.test(url)) {
+    indicateError('Only HTTP/HTTPS URLs are supported.');
+    return;
+  }
+
+  const head = await fetch(url, { method: 'HEAD' });
+  if (!head.ok) {
+    indicateError(`Failed to access URL: ${head.status} ${head.statusText}`);
+    return;
+  }
+
+  // FIXME: if content-length is missing, we proceed to download the file anyways
+  const maxSizeMB = 20; // arbitrary limit to prevent downloading huge files; adjust as needed
+  const oneMB = 1024 * 1024;
+  const maxBytes = maxSizeMB * oneMB;
+  const contentLength = head.headers.get('Content-Length');
+  if (contentLength && parseInt(contentLength) > maxBytes) {
+    indicateError(`File is too large (max ${maxSizeMB} MB).`);
+    return;
+  }
+
+  const contentType = head.headers.get('Content-Type') || '';
+  if (!contentType.startsWith('image/') && !contentType.startsWith('video/')) {
+    indicateError('URL does not seem to point to a supported image or video format.');
+    return;
+  }
+
+  const resp = await fetch(url, { credentials: 'omit' });
+  if (!resp.ok) {
+    indicateError(`Failed to load file: ${resp.status} ${resp.statusText}`);
+    return;
+  }
+
+  const blob = await resp.blob();
+  try {
+    await validateBlob(blob);
+  } catch (err) {
+    indicateError(err.message);
+    return;
+  }
+  const file = new File([blob], url.split('/').pop(), { type: blob.type });
+  selectFile(file);
+});
+
 function selectFile(file) {
   selectedFile = file;
   dropZone.classList.add('has-file');
-  dropLabel.textContent = `Selected: ${file.name}`;
+
+  const clampedFileName = file.name.length > 40 ? `...${file.name.slice(-37)}` : file.name;
+  dropLabel.textContent = `Selected: ${clampedFileName}`;
+
   convertBtn.disabled = false;
   statusText.textContent = 'Ready to convert.';
   downloadArea.innerHTML = '';
