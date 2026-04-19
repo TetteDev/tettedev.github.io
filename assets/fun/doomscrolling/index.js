@@ -232,7 +232,7 @@ function triggerGallery(e) {
             let currentMediaIndex = Array.from(grid.children).indexOf(activeMediaElement);
             let nextMediaIndex = null;
             let nextMediaElement = e.key === nextKey ? activeMediaElement.nextElementSibling : activeMediaElement.previousElementSibling;
-            
+
             const preloadOffset = 3; // how many images before the end to start preloading more
             if (nextMediaElement) {
                 nextMediaIndex = Array.from(grid.children).indexOf(nextMediaElement);
@@ -281,5 +281,32 @@ for (let i = 0; i < imgTotal; i++) {
 
     grid.appendChild(img);
 }
+
+const debounce = (func, delay) => {
+    let timeoutId;
+    return function() {
+        const args = arguments;
+        const context = this;
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(context, args), delay);
+    };
+};
+
+// auto auto load more pages when scrolling near the bottom
+window.addEventListener('scroll', debounce(() => {
+    const scrollThreshold = 10; // pixels from the bottom to trigger loading more images
+    const isAtBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - scrollThreshold;
+    if (isAtBottom) {
+        for (let i = 0; i < imgPerRow * 2; i++) {
+            const img = document.createElement('img');
+            img.className = 'thumbnail';
+            img.addEventListener('load', onImageLoad, { capture: true });
+            img.addEventListener('error', onImageError, { capture: true });
+            img.loading = 'lazy';
+            img.src = randomImg(img, imageProvider, useProxy);
+            grid.appendChild(img);
+        }
+    }
+}, 250));
 
 
