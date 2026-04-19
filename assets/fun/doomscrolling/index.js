@@ -1,4 +1,10 @@
-const allowStoreDataLocally = false;
+let allowStoreDataLocally = false;
+if (localStorage.getItem('local') === null) {
+    localStorage.setItem('local', 'false');
+}
+else {
+    allowStoreDataLocally = localStorage.getItem('local') === 'true';
+}
 
 let grid = document.getElementById('grid');
 if (!grid) {
@@ -171,7 +177,7 @@ function triggerGallery(e) {
         galleryContainer.style.zIndex = 1000;
 
         const b64Placeholder = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7';
-        galleryContainer.innerHTML = `<img src="${e.target.urls.fullsizeUrl || b64Placeholder}" loading="eager" style="z-index: 1001;">`.trim();
+        //galleryContainer.innerHTML = `<img src="${e.target.urls.fullsizeUrl || b64Placeholder}" loading="eager" style="z-index: 1001;">`.trim();
         galleryContainer.innerHTML = `
             <div style="z-index: 1001; ">
                 <!-- <video controls autoplay style="max-width: 90vw; max-height: 90vh; z-index: 1002; display: none;"></video> -->
@@ -226,10 +232,12 @@ function triggerGallery(e) {
             let currentMediaIndex = Array.from(grid.children).indexOf(activeMediaElement);
             let nextMediaIndex = null;
             let nextMediaElement = e.key === nextKey ? activeMediaElement.nextElementSibling : activeMediaElement.previousElementSibling;
-
+            
+            const preloadOffset = 3; // how many images before the end to start preloading more
             if (nextMediaElement) {
                 nextMediaIndex = Array.from(grid.children).indexOf(nextMediaElement);
-                if (nextMediaIndex === Array.from(grid.children).length - 1) {
+                const shouldProloadMore = e.key === nextKey ? (nextMediaIndex >= Array.from(grid.children).length - preloadOffset) : (nextMediaIndex <= preloadOffset);
+                if (shouldProloadMore) {
                     loadMoreImages(imgPerRow, imageProvider, useProxy);
                 }
             }
