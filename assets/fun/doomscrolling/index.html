@@ -5,14 +5,31 @@
         <link rel="stylesheet" href="index.css">
     </head>
     <body>
-        <div id="opts" style="display:none;">
-            <!-- <div class="setting">
-                <label><input type="checkbox" id="localStorageToggle">Allow storing data locally</label>
-            </div> -->
+        <div id="opts">
+            <div class="opts-tab">Settings</div>
+            <div class="setting" title="Allow the page to remember your settings" skip>
+                <label><input type="checkbox" id="isLocalStorageEnabled" data-ls-key="local" data-fn="isLocalStorageEnabled" data-default-value="false"> Allow storing data locally</label>
+            </div>
+            <div class="setting" title="Load the images through duckduckgo's image proxy">
+                <label><input type="checkbox" id="isProxyEnabled" data-ls-key="isProxyEnabled" data-fn="isProxyEnabled" data-default-value="true"> Use proxy for requests</label>
+            </div>
+            <div class="setting" title="Total number of images to display">
+                <label for="totalCountImages">Load N amount of images on startup:</label>
+                <input type="number" id="totalCountImages" min="0" max="60" value="6" style="width:60px;" data-ls-key="totalCountImages" data-fn="totalCountImages" data-default-value="30">
+            </div>
+            <div class="setting" title="How many images to load when nearing end of image list">
+                <label for="loadMoreImagesCount">Load N more images count:</label>
+                <input type="number" id="loadMoreImagesCount" min="1" max="12" value="6" style="width:60px;" data-ls-key="loadMoreImagesCount" data-fn="loadMoreImagesCount" data-default-value="6">
+            </div>
+            <div class="setting" title="Maximum number of attempts to load/generate a valid image">
+                <label for="maxRetries"> Maximum number of attempts to load/generate a valid image:</label>
+                <input type="number" id="maxRetries" min="1" max="12" value="10" style="width:60px;" data-ls-key="maxRetries" data-fn="maxRetries" data-default-value="10">
+            </div>
+            <button onclick="window.localStorage.clear(); const id = (document.querySelector('#opts button').getAttribute('data-db-key') || 'badImageIds'); window.indexedDB.deleteDatabase(id);" data-db-key="badImageIds">Clear Stored Data</button>
         </div>
         <main>
             <div id="grid"></div>
         </main>
-        <script src="index.js"></script>
+        <script src="main.js"></script>
     </body>
 </html>
