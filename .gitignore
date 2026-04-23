@@ -1,4 +1,4 @@
 *.py
 *.dat
 *.exe
-/assets/fun/doomscrolling
+/assets/fun/doomscrolling/_*
