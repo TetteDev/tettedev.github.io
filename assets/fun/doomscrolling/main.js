@@ -137,10 +137,21 @@ document.querySelectorAll('#opts .setting').forEach(opt => {
 
 const memes = document.getElementById('grid');
 memes.addImages = function(count, eager = false) {
+    const PLACEHOLDERS_ONLY = false; 
+
     const makeImage = (overrideSrc = null) => {
         const img = document.createElement('img');
         img.className = 'thumbnail';
-        img.loading = eager ? 'eager' : 'lazy';
+        if (!PLACEHOLDERS_ONLY) img.loading = eager ? 'eager' : 'lazy';
+
+        if (PLACEHOLDERS_ONLY) {
+            const src = 'dev/image.png';
+            img.urls = { base: src, proxied: src, proxiedFullsize: src };
+            img.src = src;
+            img.style.opacity = '1';
+            memes.includeInGallery(img);
+            return img;
+        }
 
         if (overrideSrc) {
             img.urls = { base: overrideSrc, proxied: overrideSrc, proxiedFullsize: overrideSrc };
@@ -226,17 +237,42 @@ memes.includeInGallery = function(img) {
             else if (e.key === 'Escape') hideGallery();
         }, { capture: true });
 
+        const makeElementZoomable = (element) => {
+            element.scale = 1;
+
+            if (element.getAttribute('data-zoomable') === 'true') {
+                element.scale = 1;
+                element.style.transformOrigin = 'center center'; // reset the transform origin
+                element.style.transform = 'scale(1)'; // reset the zoom
+                return;
+            }
+            element.setAttribute('data-zoomable', 'true');
+
+            const zoomStep = 0.1;
+            element.parentElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                if (e.deltaY < 0) {
+                    element.scale += zoomStep;
+                }
+                else {
+                    element.scale = Math.max(zoomStep, element.scale - zoomStep);
+                }
+                
+                element.style.transformOrigin = `${e.offsetX}px ${e.offsetY}px`; // zoom towards the cursor position
+                element.style.transform = `scale(${element.scale})`;
+            });
+        };
+        makeElementZoomable(overlay.querySelector('img'));
 
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) hideGallery();
-            else {
-                // todo implement zooming on click etc
-            }
+            makeElementZoomable(overlay.querySelector('img'));
         });
         document.body.appendChild(overlay); 
     };
     const hideGallery = () => { 
         overlay.style.display = 'none';
+
         memes.querySelectorAll('img').forEach(img => { if (img.hasAttribute('active')) img.removeAttribute('active'); });
     };
     const triggerGallery = (e) => { 
@@ -257,10 +293,13 @@ memes.includeInGallery = function(img) {
             galleryImg.style.maxHeight = '90vh';
         }, { once: true });
 
+        galleryImg.style.transform = 'scale(1)';
         galleryImg.reference = img;
         galleryImg.src = img.urls.proxiedFullsize; 
     };
     const nextImg = () => {
+        overlay.querySelector('img').style.transform = 'scale(1)';
+
         const active = memes.querySelector('img[active="true"]');
         let rightSibling = active && active.nextElementSibling;
         if (rightSibling) {
@@ -276,6 +315,8 @@ memes.includeInGallery = function(img) {
         }
     };
     const prevImg = () => { 
+        overlay.querySelector('img').style.transform = 'scale(1)';
+
         const active = memes.querySelector('img[active="true"]');
         const leftSibling = active.previousElementSibling;
         if (leftSibling) leftSibling.click();

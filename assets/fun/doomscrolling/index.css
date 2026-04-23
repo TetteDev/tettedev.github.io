@@ -128,4 +128,8 @@ main {
     object-fit: contain;
 
     z-index: 1001;
+
+    image-rendering: pixelated;
+    transition: transform 0.15s ease;
+    transform: scale(1);
 }
