@@ -41,6 +41,39 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+@keyframes rainbow {
+    0% { color: red; }
+    16% { color: orange; }
+    33% { color: yellow; }
+    50% { color: green; }
+    66% { color: blue; }
+    83% { color: indigo; }
+    100% { color: violet; }
+}
+@keyframes wobble {
+    0%   { transform: translateY(0); }
+    10%  { transform: translateY(-3px); }
+    20%  { transform: translateY(-5px); }
+    30%  { transform: translateY(-3px); }
+    40%  { transform: translateY(0); }
+    50%  { transform: translateY(3px); }
+    60%  { transform: translateY(5px); }
+    70%  { transform: translateY(3px); }
+    80%  { transform: translateY(0); }
+    90%  { transform: translateY(-3px); }
+    100% { transform: translateY(0); }
+}
+.wacky {
+    font-family: monospace;
+    font-size: inherit;
+    display: inline-block;
+
+    /* animation:
+        rainbow 1.5s linear infinite,
+        wobble 1.2s ease-in-out infinite; */
+    animation: rainbow 1.5s linear infinite;  
+}
+
 #opts .opts-tab {
     background: #222;
     color: #fff;
@@ -112,6 +145,12 @@ footer {
     user-select: none;
 }
 
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
 footer a {
     background: linear-gradient(90deg, var(--hover-accent), #ff00ff);
     background-size: 200% 200%;
@@ -123,23 +162,22 @@ footer a {
 }
 
 #tempLoadMoreButton {
-    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: fit-content;
     height: fit-content;
     padding: 1em;
     background-color: transparent;
     border: none;
     cursor: pointer;
 
-    color: white;
+    transition: none;
+    color: rgba(255, 255, 255, 0.5);
 }
 #tempLoadMoreButton:hover {
-    
-}
-
-@keyframes gradientShift {
-    0% { background-position: 0% 50%; }
-    50% { background-position: 100% 50%; }
-    100% { background-position: 0% 50%; }
+    transition: color 0.3s ease;
+    color: rgba(255, 255, 255, 0.9); 
 }
 
 #grid {
@@ -197,6 +235,24 @@ footer a {
     transform: scale(1.05);
 
     border: 1px solid rgba(0, 240, 255, 0.5); /* --hover-accent with changed alpha */
+}
+
+.overlay-button {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.3);
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    opacity: 0;
+    transition: opacity 0.3s ease-in-out;
+
+    color: red;
 }
 
 #gallery {

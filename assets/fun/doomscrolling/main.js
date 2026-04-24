@@ -228,7 +228,20 @@ memes.addImages = function(count, eager = false, allLoadedCb = null) {
         fragment.appendChild(img);
     }
     this.appendChild(fragment);
-    if (typeof allLoadedCb === 'function') allLoadedCb();
+
+    if (typeof allLoadedCb === 'function') {
+        const atleastNImagesResolved = Math.ceil(count * 0.50); // call the callback once at least 50% of the images have finished loading (either successfully or failed), to avoid long waits on slow connections while still ensuring most images are ready, 0 to wait for all images to load before calling the callback
+        const checkIfAllLoaded = (timout = 100) => {
+            const loadingImages = memes.querySelectorAll('img.loading-image');
+            if (loadingImages.length <= count - atleastNImagesResolved) {
+                allLoadedCb(fragment);
+            }
+            else {
+                if (timout > 0) setTimeout(checkIfAllLoaded, timout);
+            }
+        };
+        checkIfAllLoaded(100);
+    }
 };
 memes.includeInGallery = function(img) {
     let overlay = null;
@@ -302,6 +315,10 @@ memes.includeInGallery = function(img) {
         memes.querySelectorAll('img').forEach(img => { if (img.hasAttribute('active')) img.removeAttribute('active'); });
     };
     const triggerGallery = (e) => { 
+        let loadMoreButton = document.getElementById('tempLoadMoreButton');
+        const imgIsInLoadMoreRange = Array.from(memes.children).indexOf(e.currentTarget) >= memes.children.length - _loadMoreThreshold();
+        if (imgIsInLoadMoreRange) loadMoreButton?.remove();
+
         overlay.style.display = 'flex'; 
         document.body.style.overflow = 'hidden';
 
@@ -311,7 +328,6 @@ memes.includeInGallery = function(img) {
         const activeImageIndex = Array.from(memes.children).indexOf(img);
         if (activeImageIndex >= memes.children.length - _loadMoreThreshold()) {
             memes.addImages(settings.loadMoreImagesCount(), true /* eager */);
-            //requestAnimationFrame(() => { img.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
         }
 
         const galleryImg = overlay.querySelector('img');
@@ -371,7 +387,7 @@ settings.badImageIds().then(badIds => {
 
     const tempLoadMorebutton = document.createElement('button');
     tempLoadMorebutton.id = 'tempLoadMoreButton';
-    tempLoadMorebutton.textContent = `Click to load in more images`;
+    tempLoadMorebutton.innerHTML = `<span class="wacky">Click here to enable Infinity Scrolling ™</span>`;
     tempLoadMorebutton.addEventListener('click', () => { tempLoadMorebutton.remove(); memes.addImages(settings.loadMoreImagesCount(), true /* eager */); }, { once: true });
     const insertion = document.querySelector('footer');
     insertion.insertAdjacentElement('beforebegin', tempLoadMorebutton);
@@ -404,17 +420,13 @@ settings.badImageIds().then(badIds => {
             });
         };
 
-        waitFor('.thumbnail[class*="valid-image"]', memes).then((element) => {
-            if (tempLoadMorebutton.isConnected) tempLoadMorebutton.remove();
-
-            const leniencyPixels = Math.ceil(element.getBoundingClientRect().height / 2.0); // start loading more images when the user is within half an image's height from the bottom of the page
-            window.addEventListener('scroll', debounce(() => {
-                const closeToBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - leniencyPixels;
-                if (!closeToBottom) return;
-
-                memes.addImages(settings.loadMoreImagesCount(), true /* eager */);
-            }, 250));
-        });
+        const element = memes.querySelector('img.valid-image') || memes.querySelector('img.loading-image');
+        const leniencyPixels = Math.ceil(element.getBoundingClientRect().height / 2.0); // start loading more images when the user is within half an image's height from the bottom of the page
+        window.addEventListener('scroll', debounce(() => {
+            const closeToBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - leniencyPixels;
+            if (!closeToBottom) return;
+            memes.addImages(settings.loadMoreImagesCount(), true /* eager */, () => { if (tempLoadMorebutton.isConnected) tempLoadMorebutton.remove(); });
+        }, 250), { passive: true });
     });
 });
 function memoizedGenerateId() {
