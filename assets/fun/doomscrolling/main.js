@@ -136,7 +136,7 @@ document.querySelectorAll('#opts .setting').forEach(opt => {
 });
 
 const memes = document.getElementById('grid');
-memes.addImages = function(count, eager = false) {
+memes.addImages = function(count, eager = false, allLoadedCb = null) {
     const PLACEHOLDERS_ONLY = false; 
 
     const makeImage = (overrideSrc = null) => {
@@ -174,7 +174,6 @@ memes.addImages = function(count, eager = false) {
                 const self = e.currentTarget || this || img;
                 const eventType = e.type;
                 if (eventType === 'error') {
-                    // remember "bad" id's between sessions
                     const badId = settings.isLocalStorageEnabled() ? self.id : null;
                     if (badId) settings.badImageIds.addId(badId);
                     
@@ -229,6 +228,7 @@ memes.addImages = function(count, eager = false) {
         fragment.appendChild(img);
     }
     this.appendChild(fragment);
+    if (typeof allLoadedCb === 'function') allLoadedCb();
 };
 memes.includeInGallery = function(img) {
     let overlay = null;
@@ -247,29 +247,42 @@ memes.includeInGallery = function(img) {
         }, { capture: true });
 
         const makeElementZoomable = (element) => {
-            element.scale = 1;
+            element.scale = 1;  
+            element.ctrlDown = false;
 
             if (element.getAttribute('data-zoomable') === 'true') {
                 element.scale = 1;
+                element.ctrlDown = false;
                 element.style.transformOrigin = 'center center'; // reset the transform origin
                 element.style.transform = 'scale(1)'; // reset the zoom
                 return;
             }
             element.setAttribute('data-zoomable', 'true');
 
-            const zoomStep = 0.1;
-            element.parentElement.addEventListener('wheel', (e) => {
-                e.preventDefault();
+            // ctrl to zoom in/out faster
+            const keyHandler = (e) => { element.ctrlDown = e.type == 'keydown' ? true : e.type == 'keyup' ? false : element.ctrlDown; };
+            ['keydown', 'keyup'].forEach(eventType => { document.addEventListener(eventType, keyHandler, { passive: true }); });
 
-                if (e.deltaY < 0) {
-                    element.scale += zoomStep;
-                }
-                else {
-                    element.scale = Math.max(zoomStep, element.scale - zoomStep);
-                }
-                
-                element.style.transformOrigin = `${e.offsetX}px ${e.offsetY}px`; // zoom towards the cursor position
-                element.style.transform = `scale(${element.scale})`;
+            let zoomStep = 0.1;
+            element.parentElement.addEventListener('wheel', (e) => {
+                const zoom = (step, e) => {
+                    element.transition = 'transform 0.1s ease-out';
+
+                    step = element.ctrlDown ? 0.5 : 0.1; // increase zoom speed when ctrl is held
+
+                    if (e.deltaY < 0) {
+                        element.scale += step;
+                    }
+                    else {
+                        element.scale = Math.max(step, element.scale - step);
+                    }
+                    element.style.transformOrigin = `${e.offsetX}px ${e.offsetY}px`; // zoom towards the cursor position
+                    element.style.transform = `scale(${element.scale})`;
+                    element.style.transition = ''; // reset transition after applying zoom
+                };
+
+                e.preventDefault();
+                zoom(zoomStep, e);
 
                 // make image pannable also
             });
@@ -355,7 +368,54 @@ settings.badImageIds().then(badIds => {
         let storedBadIds = [...new Set(badIds)];
         idCache = new Set(storedBadIds);
     }
-    memes.addImages(settings.totalCountImages());
+
+    const tempLoadMorebutton = document.createElement('button');
+    tempLoadMorebutton.id = 'tempLoadMoreButton';
+    tempLoadMorebutton.textContent = `Click to load in more images`;
+    tempLoadMorebutton.addEventListener('click', () => { tempLoadMorebutton.remove(); memes.addImages(settings.loadMoreImagesCount(), true /* eager */); }, { once: true });
+    const insertion = document.querySelector('footer');
+    insertion.insertAdjacentElement('beforebegin', tempLoadMorebutton);
+
+    memes.addImages(settings.totalCountImages(), false, () => {
+        const debounce = (func, delay) => {
+            let timeoutId;
+            return function(...args) {
+                if (timeoutId) clearTimeout(timeoutId);
+                timeoutId = setTimeout(() => {
+                    func.apply(this, args);
+                }, delay);
+            };
+        };
+        const waitFor = (selector, parent = document) => {
+            return new Promise((resolve) => {
+                const element = parent.querySelector(selector);
+                if (element) {
+                    resolve(element);
+                    return;
+                }
+                const observer = new MutationObserver(() => {
+                    const element = parent.querySelector(selector);
+                    if (element) {
+                        resolve(element);
+                        observer.disconnect();
+                    }
+                });
+                observer.observe(parent, { childList: true, subtree: true });
+            });
+        };
+
+        waitFor('.thumbnail[class*="valid-image"]', memes).then((element) => {
+            if (tempLoadMorebutton.isConnected) tempLoadMorebutton.remove();
+
+            const leniencyPixels = Math.ceil(element.getBoundingClientRect().height / 2.0); // start loading more images when the user is within half an image's height from the bottom of the page
+            window.addEventListener('scroll', debounce(() => {
+                const closeToBottom = window.innerHeight + window.scrollY >= document.body.offsetHeight - leniencyPixels;
+                if (!closeToBottom) return;
+
+                memes.addImages(settings.loadMoreImagesCount(), true /* eager */);
+            }, 250));
+        });
+    });
 });
 function memoizedGenerateId() {
     const characters = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

@@ -10,8 +10,10 @@
     --gallery-bg-alpha: 0.95;
     --slide-out-pane-border-radius: 3px;
 
+    --border-alpha: 0.2;
     --accent: white;
     --hover-accent: rgba(0, 240, 255, 1);
+    --image-render-mode: pixelated;
 }
 
 body {
@@ -70,6 +72,21 @@ body {
     padding: 2px 4px;
 }
 
+#opts button {
+    background: #222;
+    color: #fff;
+    border: 1px solid #444;
+    border-radius: 3px;
+    padding: 6px 12px;
+    margin: 10px 18px;
+    cursor: pointer;
+}
+#opts button:hover {
+    background: var(--hover-accent);
+    color: #000;
+    border-color: var(--hover-accent);
+}
+
 #opts:hover, #opts:focus-within {
     max-height: 500px;
     box-shadow: 0 4px 16px rgba(0,0,0,0.22);
@@ -82,6 +99,47 @@ main {
     align-items: center;
     justify-content: center;
     min-height: 100vh;
+}
+
+footer {
+    margin-top: 10px;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: white;
+
+    -webkit-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+}
+
+footer a {
+    background: linear-gradient(90deg, var(--hover-accent), #ff00ff);
+    background-size: 200% 200%;
+    animation: gradientShift 3s linear infinite;
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+    text-decoration: none;
+}
+
+#tempLoadMoreButton {
+    width: 100%;
+    height: fit-content;
+    padding: 1em;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+
+    color: white;
+}
+#tempLoadMoreButton:hover {
+    
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
 
 #grid {
@@ -112,7 +170,7 @@ main {
     width: 100%;
     padding-top: 100%;
     position: relative;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, var(--border-alpha, 0.2));
 
     cursor: not-allowed;
 }
@@ -130,7 +188,7 @@ main {
 
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, var(--border-alpha, 0.2));
 }
 
 .thumbnail:hover {
@@ -160,11 +218,11 @@ main {
     max-width: 90%;
     max-height: 90%;
     object-fit: contain;
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, var(--border-alpha, 0.2));
 
     z-index: 1002;
 
-    image-rendering: pixelated;
+    image-rendering: var(--image-render-mode);
     transition: transform 0.15s ease;
     transform: scale(1);
 }

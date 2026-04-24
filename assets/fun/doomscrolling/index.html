@@ -25,10 +25,13 @@
                 <label for="maxRetries"> Maximum number of attempts to load/generate a valid image:</label>
                 <input type="number" id="maxRetries" min="1" max="12" value="10" style="width:60px;" data-ls-key="maxRetries" data-fn="maxRetries" data-default-value="10">
             </div>
-            <button onclick="window.localStorage.clear(); const id = (document.querySelector('#opts button').getAttribute('data-db-key') || 'badImageIds'); window.indexedDB.deleteDatabase(id);" data-db-key="badImageIds">Clear Stored Data</button>
+            <button onclick="window.localStorage.clear();const id = (document.querySelector('#opts button').getAttribute('data-db-key') || 'badImageIds');window.indexedDB.deleteDatabase(id);" data-db-key="badImageIds">Clear Stored Data</button>
         </div>
         <main>
             <div id="grid"></div>
+            <footer>
+                <a href="https://github.com/TetteDev">Made by TetteDev</a>
+            </footer>
         </main>
         <script src="main.js"></script>
     </body>
