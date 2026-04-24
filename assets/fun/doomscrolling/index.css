@@ -11,7 +11,7 @@
     --slide-out-pane-border-radius: 3px;
 
     --accent: white;
-    --hover-accent: #00F0FF;
+    --hover-accent: rgba(0, 240, 255, 1);
 }
 
 body {
@@ -35,6 +35,8 @@ body {
     display: flex;
     flex-direction: column;
     align-items: stretch;
+
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 #opts .opts-tab {
@@ -46,7 +48,6 @@ body {
     padding: 6px 0 6px 12px;
     cursor: pointer;
     user-select: none;
-    /* border-bottom: 1px solid #444; */
     letter-spacing: 0.5px;
 }
 
@@ -92,6 +93,35 @@ main {
     gap: 20px;
 }
 
+@keyframes pulse-bg {
+  0%, 100% { background-color: #444; }
+  50% { background-color: #666; }
+}
+.loading-image {
+    animation: pulse-bg 0.5s ease-in-out infinite;
+}
+
+.invalid-image {
+    display: flex;
+    max-width: var(--img-max-width);
+    width: 100%;
+    height: auto;
+    align-items: center;
+    justify-content: center;
+    background-color: rgba(0, 0, 0, var(--gallery-bg-alpha, 1.0));
+    width: 100%;
+    padding-top: 100%;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+
+    cursor: not-allowed;
+}
+
+.valid-image {
+    opacity: 1;
+    animation: none;
+}
+
 .thumbnail {
     max-width: var(--img-max-width);
     width: 100%;
@@ -100,12 +130,15 @@ main {
 
     opacity: 0;
     transition: opacity 0.3s ease-in-out;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .thumbnail:hover {
     cursor: pointer;
     position: relative;
     transform: scale(1.05);
+
+    border: 1px solid rgba(0, 240, 255, 0.5); /* --hover-accent with changed alpha */
 }
 
 #gallery {
@@ -120,14 +153,16 @@ main {
     align-items: center;
 
     z-index: 1000;
+    backdrop-filter: blur(10px);
 }
 
 #gallery img {
     max-width: 90%;
     max-height: 90%;
     object-fit: contain;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 
-    z-index: 1001;
+    z-index: 1002;
 
     image-rendering: pixelated;
     transition: transform 0.15s ease;

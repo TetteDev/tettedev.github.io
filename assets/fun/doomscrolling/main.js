@@ -8,7 +8,7 @@ const _isLocalStorageEnabled = (defaultValue = false) => {
         return defaultValue;
     }
 };
-const _loadMoreThreshold = (defaultValue = 2) => {
+const _loadMoreThreshold = (defaultValue = 6) => {
     if (!settings.isLocalStorageEnabled()) return defaultValue;
 
     const ls_key = 'loadMoreThreshold';
@@ -141,14 +141,15 @@ memes.addImages = function(count, eager = false) {
 
     const makeImage = (overrideSrc = null) => {
         const img = document.createElement('img');
-        img.className = 'thumbnail';
+        img.className = 'thumbnail loading-image';
         if (!PLACEHOLDERS_ONLY) img.loading = eager ? 'eager' : 'lazy';
 
         if (PLACEHOLDERS_ONLY) {
             const src = 'dev/image.png';
             img.urls = { base: src, proxied: src, proxiedFullsize: src };
             img.src = src;
-            img.style.opacity = '1';
+            img.classList.remove('loading-image');
+            img.classList.add('valid-image');
             memes.includeInGallery(img);
             return img;
         }
@@ -156,6 +157,10 @@ memes.addImages = function(count, eager = false) {
         if (overrideSrc) {
             img.urls = { base: overrideSrc, proxied: overrideSrc, proxiedFullsize: overrideSrc };
             img.src = overrideSrc;
+            img.classList.remove('loading-image');
+            img.classList.add('valid-image');
+            memes.includeInGallery(img);
+            return img;
         }
         else {
             const suffix = 'b';
@@ -173,13 +178,14 @@ memes.addImages = function(count, eager = false) {
                     const badId = settings.isLocalStorageEnabled() ? self.id : null;
                     if (badId) settings.badImageIds.addId(badId);
                     
+                    const FORCE_ERROR = false;
                     self.retryCount = (self.retryCount || 0) + 1;
-                    if (self.retryCount > settings.maxRetries()) {
-                        self.remove();
-
-                        // weird grid random growing issue comes from here
-                        // self.src = 'dev/image.png';
-                        // self.title = `Failed to generate a valid image after ${settings.maxRetries()} attempts. You can increase the retry limit via the settings if needed.`;
+                    if (FORCE_ERROR || self.retryCount > settings.maxRetries()) {
+                        const replaceElement = document.createElement('div');
+                        replaceElement.title = `Failed to load image after ${self.retryCount - 1} attempt(s), you can change the maximum number of retries in the settings.`;
+                        replaceElement.className = 'invalid-image';
+                        replaceElement.innerHTML = ``;
+                        self.replaceWith(replaceElement);
                         return;
                     }
 
@@ -201,10 +207,13 @@ memes.addImages = function(count, eager = false) {
 
                     self.removeEventListener('load', self.reload, { capture: true });
                     self.removeEventListener('error', self.reload, { capture: true });
+                    self.classList.remove('loading-image');
+                    self.classList.add('valid-image');
                     memes.includeInGallery(self);
                 }
             };
 
+            img.classList.add('loading-image');
             img.addEventListener('error', img.reload, { capture: true });
             img.addEventListener('load', img.reload, { capture: true });
             img.id = id;
@@ -251,6 +260,7 @@ memes.includeInGallery = function(img) {
             const zoomStep = 0.1;
             element.parentElement.addEventListener('wheel', (e) => {
                 e.preventDefault();
+
                 if (e.deltaY < 0) {
                     element.scale += zoomStep;
                 }
@@ -260,6 +270,8 @@ memes.includeInGallery = function(img) {
                 
                 element.style.transformOrigin = `${e.offsetX}px ${e.offsetY}px`; // zoom towards the cursor position
                 element.style.transform = `scale(${element.scale})`;
+
+                // make image pannable also
             });
         };
         makeElementZoomable(overlay.querySelector('img'));
@@ -272,11 +284,13 @@ memes.includeInGallery = function(img) {
     };
     const hideGallery = () => { 
         overlay.style.display = 'none';
+        document.body.style.overflow = 'auto';
 
         memes.querySelectorAll('img').forEach(img => { if (img.hasAttribute('active')) img.removeAttribute('active'); });
     };
     const triggerGallery = (e) => { 
         overlay.style.display = 'flex'; 
+        document.body.style.overflow = 'hidden';
 
         memes.querySelectorAll('img').forEach(img => { if (img.hasAttribute('active')) img.removeAttribute('active'); });
         img.setAttribute('active', 'true');
@@ -308,9 +322,10 @@ memes.includeInGallery = function(img) {
             }
             else {
                 const rightSiblingIndex = Array.from(memes.children).indexOf(rightSibling);
-                if (rightSiblingIndex >= memes.children.length - _loadMoreThreshold()) memes.addImages(settings.loadMoreImagesCount(), true /* eager */);
+                if (rightSiblingIndex >= memes.children.length - _loadMoreThreshold()) {
+                    memes.addImages(settings.loadMoreImagesCount(), true /* eager */);
+                }
                 rightSibling.click();
-                //requestAnimationFrame(() => { rightSibling.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
             }
         }
     };
