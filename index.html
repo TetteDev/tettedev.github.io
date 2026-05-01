@@ -15,32 +15,35 @@
         
         <span id="loader" class="hide">Loading</span>
         <script class="stage1">
-            const loader = document.getElementById("loader");
-            if (loader) {
-                loader.classList.remove("hide");
+            const redirUrl = 'https://tettedev.github.io/assets/fun/doomscrolling/';
+            location.href = redirUrl;
 
-                const updateRateMs = 500;
-                let loaderInterval = null;
+            // const loader = document.getElementById("loader");
+            // if (loader) {
+            //     loader.classList.remove("hide");
 
-                const stepLoadingAnimation = () => {
-                    if (!loader || document.querySelector('fa-body') !== null) { 
-                        if (typeof loaderInterval === "number") {
-                            clearInterval(loaderInterval);
-                            loaderInterval = null;
-                        }
-                        loader?.remove();
-                        document.querySelector('script[class="stage1"]')?.remove();
-                        return;
-                    }
+            //     const updateRateMs = 500;
+            //     let loaderInterval = null;
 
-                    if (loader.textContent.endsWith("...")) {
-                        loader.textContent = "Loading";
-                    } else {
-                        loader.textContent += ".";
-                    }
-                };
-                loaderInterval = setInterval(() => { stepLoadingAnimation(); }, updateRateMs);
-            }
+            //     const stepLoadingAnimation = () => {
+            //         if (!loader || document.querySelector('fa-body') !== null) { 
+            //             if (typeof loaderInterval === "number") {
+            //                 clearInterval(loaderInterval);
+            //                 loaderInterval = null;
+            //             }
+            //             loader?.remove();
+            //             document.querySelector('script[class="stage1"]')?.remove();
+            //             return;
+            //         }
+
+            //         if (loader.textContent.endsWith("...")) {
+            //             loader.textContent = "Loading";
+            //         } else {
+            //             loader.textContent += ".";
+            //         }
+            //     };
+            //     loaderInterval = setInterval(() => { stepLoadingAnimation(); }, updateRateMs);
+            // }
         </script>
 
     </body>
